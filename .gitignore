@@ -1,0 +1,17 @@
+# Ignorer un fichier spécifique
+instructions.txt
+launch.slurm
+
+# Ignorer un dossier entier
+checkpoints/
+listops_data/
+logs/
+results/
+wandb/
+
+# Ignorer tous les fichiers d'un certain type
+*.log
+*.env
+
+# Ignorer un fichier dans un dossier spécifique
+config/secret.json
