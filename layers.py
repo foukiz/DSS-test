@@ -196,18 +196,20 @@ class InputEncoder(nn.Module):
     # TODO une classe d'encoder d'input qui met les données sous le bon format pour le DSSLayer
     # par exemple un embedding pour ListOps, ou une simple couche linéaire pour CopyTask
 
-    def __init__(self, input_dim, input_size, mode='embedding'):
+    def __init__(self, data_dim, input_size, mode='embedding'):
         super().__init__()
-        assert mode in ['embedding', 'identity'], (f"mode must be one of ['embedding', 'identity'], "
-                                                   "found {mode}")
-        self.input_dim = input_dim
+        assert mode in ['embedding', 'linear', 'identity'], (f"mode must be one of "
+                                "['embedding', 'linear', 'identity'], found {mode}")
+        self.data_dim = data_dim
         self.input_size = input_size
         self.mode = mode
 
         if mode == 'embedding':
-            self.layer = nn.Embedding(input_dim, input_size)
+            self.layer = nn.Embedding(data_dim, input_size)
+        if mode == 'linear':
+            self.layer = nn.Linear(data_dim, input_size)
         if mode == 'identity':
-            assert input_dim == input_size, ("for identity encoding, input_dim "
+            assert data_dim == input_size, ("for identity encoding, input_dim "
                                              "must be equal to input_size")
             self.layer = nn.Identity()
 
@@ -247,7 +249,7 @@ class Normalization(nn.Module):
     def __init__(self, input_size, mode='batch_norm'):
         super().__init__()
         self.input_size = input_size
-        self.mode = mode
+        self.mode = mode if mode is not None else 'none'
 
         assert mode in ['batch_norm', 'layer_norm', 'none'], "mode must be one of ['batch_norm', 'layer_norm', 'none']"
 

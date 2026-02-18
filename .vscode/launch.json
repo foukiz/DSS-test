@@ -34,6 +34,18 @@
                 "--save_network",
                 "--use_tqdm"
             ]
+        },
+        {
+            "name": "Debug seq_cifar10",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_dss.yaml",
+                "--save_network",
+                "--use_tqdm"
+            ]
         }
     ]
 }

@@ -4,13 +4,13 @@ DATASET:
   SENT_LENGTH: 10
   SEQ_LENGTH: 1000
   TEST_SIZE: 2000
-  TRAIN_SIZE: 51200
+  TRAIN_SIZE: 512000
   VAL_SIZE: 2000
   VOCABULARY: 10
 MODEL:
   INPUT_SIZE: 128
   STATE_SIZE: 64
-  ACTIVATION: $torch.nn.GELU 
+  ACTIVATION: $torch.nn.GELU
   BIAS: True
   BIDIRECTIONAL: False
   NAME: DSS
@@ -21,20 +21,20 @@ MODEL:
   N_LAYERS: 6
   SEED: [712,8]
 TRAIN:
-  BATCH_SIZE: 32
+  BATCH_SIZE: 50
   DISPLAY_EPOCH: True
   DISPLAY_EVERY: null
   LOSS_FN: $torch.nn.CrossEntropyLoss
   LOSS_CONFIG: null
   METRICS: null
-  N_EPOCHS: 6
+  N_EPOCHS: 15
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: 1.e-3
-  SCHEDULER: $torch.optim.lr_scheduler.StepLR
+    lr: 1.e-2
+    weight_decay: 1.e-2
+  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    gamma: 1.
-    step_size: 1
+    patience: 5
   TORCH_DEVICE: cpu
-  USE_TQDM: True
+  USE_TQDM: False
   USE_WANDB: False

@@ -4,7 +4,10 @@ launch.slurm
 
 # Ignorer un dossier entier
 checkpoints/
-listops_data/
 logs/
 results/
 wandb/
+
+# Ignorer les fichiers de données
+listops_data/
+cifar10_data/
