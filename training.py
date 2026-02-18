@@ -73,7 +73,7 @@ def train(
                 display_train_data(loss=stat_batch['loss'], batch_idx=batch_idx, n_batches=n_batches, epoch=epoch)
 
         if validation:
-            val_batch_size = len(dataset.val_ds)
+            val_batch_size = batch_size
             stat_val = evaluate(dataset.val_ds, val_batch_size, model, loss_fn, metrics=metrics, kind='validation', torch_device=torch_device)
 
         if scheduler is not None:

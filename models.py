@@ -20,6 +20,7 @@ class DSS(nn.Module):
         data_dim,
         bidirectional=False,
         activation='gelu',
+        kernel_version='exp',
         bias=True,
         dropout=0.0,
         normalization='batch_norm',
@@ -36,6 +37,7 @@ class DSS(nn.Module):
         self.output_size = output_size
         self.activation = activation
         self.bias = bias
+        self.version = kernel_version
 
         self.input_layer = InputEncoder(data_dim, input_size, mode=encoding)
         self.normalization_layer = Normalization(input_size, mode=normalization)
@@ -46,12 +48,12 @@ class DSS(nn.Module):
             # stacker n_layers blocs DSS:
             # DSSLayer (core) + activation + dropout + linear (mixing layer)
             layers.append(
-                DSSLayer(input_size=input_size, state_size=state_size, bidirectional=bidirectional, bias=bias)
+                DSSLayer(input_size=input_size, state_size=state_size, version=self.version, bidirectional=bidirectional, bias=bias)
             )
             layers.append(self.activation)
             layers.append(nn.Dropout(dropout) if dropout > 0.0 else nn.Identity())
             layers.append(nn.Linear(input_size, input_size, bias=bias))
-        
+
         self.dss_layers = nn.ModuleList(layers)
 
         # top pooling layer

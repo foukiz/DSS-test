@@ -14,6 +14,7 @@ MODEL:
   BIAS: True
   BIDIRECTIONAL: False
   NAME: DSS
+  KERNEL_VERSION: exp
   ENCODING: embedding
   POOLING: manytomany
   NORMALIZATION: batch_norm
@@ -30,7 +31,7 @@ TRAIN:
   N_EPOCHS: 15
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: 1.e-2
+    lr: 1.e-3
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:

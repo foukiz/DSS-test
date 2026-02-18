@@ -1,4 +1,4 @@
-PROJECT: "listops_DSS"
+PROJECT: "seq_CIFAR10_DSS"
 DATASET:
   NAME: sCIFAR10
   TRAIN_SIZE: 45000
@@ -10,6 +10,7 @@ MODEL:
   STATE_SIZE: 64
   N_LAYERS: 6
   BIDIRECTIONAL: False
+  KERNEL_VERSION: exp
   ENCODING: linear
   POOLING: average
   NAME: DSS
@@ -26,7 +27,7 @@ TRAIN:
   METRICS_CONFIG:
     task: multiclass
     num_classes: 10
-  N_EPOCHS: 200
+  N_EPOCHS: 50
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
     lr: 4.e-3

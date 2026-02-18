@@ -111,3 +111,13 @@ def has_internet(host="api.wandb.ai", port=443, timeout=3):
         return True
     except OSError:
         return False
+
+
+
+
+class MomentGeneratingFunction:
+    def __init__(self, moment_fn):
+        self.moment_fn = moment_fn
+
+    def __call__(self, x):
+        return torch.exp(self.moment_fn(x))
