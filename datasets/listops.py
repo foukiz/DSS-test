@@ -218,7 +218,6 @@ class ListOps(Dataset):
             return t, length
         
     def generate_data(self, write=True):
-        np.random.seed(42)
         data = set()
         num_samples = self.train_size + self.test_size + self.val_size
         while len(data) < num_samples:
@@ -248,6 +247,7 @@ class ListOps(Dataset):
         return train, val, test
 
     def import_dataset(self):
+        torch.manual_seed(0)
         
         print("-" * 60 + f"Loading {type(self).__name__}" + "-" * 60)
 

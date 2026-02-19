@@ -1,6 +1,7 @@
 # Ignorer un fichier spécifique
 instructions.txt
 launch.slurm
+experiments.py
 
 # Ignorer un dossier entier
 checkpoints/

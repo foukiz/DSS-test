@@ -8,6 +8,7 @@ import torch
 import argparse
 import wandb
 
+from datetime import datetime
 import yaml
 
 from training import train, evaluate
@@ -148,22 +149,24 @@ def launch(
         print('{}: {}\n'.format(k, v, decimals=2))
 
     if save_network:
+        if save_name is None:
+            save_name = f"{cfg.model['name']}_{datetime.now().strftime('%Y%m%d_%H%M')}"
         os.makedirs("results", exist_ok=True)
         torch.save(model.state_dict(), f'results/{save_name}.pth')
         # print in file performance
         with open(f'results/{save_name}.txt', 'w') as f:
             for kk, vv in stat_test.items():
                 f.write(f"{kk}: {vv}\n")
-        if use_wandb:
-            artifact = wandb.Artifact(
-                name=f"model-{wandb.run.id}",
-                type="model"
-            )
-            checkpoint_path = f"checkpoints/{wandb.run.id}.pth"
-            os.makedirs("checkpoints", exist_ok=True)
-            torch.save({"model": model.state_dict()}, checkpoint_path)
-            artifact.add_file(checkpoint_path)
-            wandb.log_artifact(artifact)
+        #if use_wandb:
+        #    artifact = wandb.Artifact(
+        #        name=f"model-{wandb.run.id}",
+        #        type="model"
+        #    )
+        #    checkpoint_path = f"checkpoints/{wandb.run.id}.pth"
+        #    os.makedirs("checkpoints", exist_ok=True)
+        #    torch.save({"model": model.state_dict()}, checkpoint_path)
+        #    artifact.add_file(checkpoint_path)
+        #    wandb.log_artifact(artifact)
 
     if use_wandb:
         wandb.log(stat_test)

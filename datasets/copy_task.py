@@ -80,7 +80,7 @@ class CopyMemory(Dataset):
         return x, y
 
     def import_dataset(self):
-        np.random.seed(42)
+        torch.manual_seed(0)
 
         print("-" * 60 + f"Loading {type(self).__name__}" + "-" * 60)
 

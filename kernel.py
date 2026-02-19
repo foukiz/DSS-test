@@ -122,3 +122,6 @@ class DSSKernel(nn.Module):
                 W = W * (dt_Lambda.exp() - 1.) * reciprocal(Lambda, clamp=True)  # [H N]
 
         return oe.contract('hn,lhn->lh', W, S).real.to(torch.float32), state     # [L H]
+    
+
+    

@@ -65,6 +65,7 @@ class sCIFAR10(Dataset):
         return self.val_ds
 
     def import_dataset(self):
+        torch.manual_seed(0)
 
         # this transform allows to download the cifar10 images in the flattened shape
         transform = transforms.Compose([

@@ -29,7 +29,10 @@ class DSS(nn.Module):
         pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
         seed=None
     ):
-        if seed: torch.manual_seed(seed)
+        if seed:
+            torch.manual_seed(seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(seed)
         super().__init__()
 
         self.input_size = input_size
