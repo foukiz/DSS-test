@@ -70,8 +70,6 @@ def make_dataset(name, **kwargs):
     return dataset(**kwargs)
 
 
-def parser_override():
-    pass
 
 
 
@@ -134,11 +132,12 @@ def launch(
     print("\n=== Launching training ===\n")
 
     model = train(model, dataset, **cfg.train)
-
+    
     if dataset.test_ds:
+        test_batch_size = cfg['train']['batch_size']
         stat_test = evaluate(
             dataset.test_ds,
-            len(dataset.test_ds),
+            test_batch_size,
             model,
             loss_fn=cfg.train['loss_fn'],
             metrics=cfg.train['metrics'],
@@ -152,7 +151,7 @@ def launch(
         if save_name is None:
             save_name = f"{cfg.model['name']}_{datetime.now().strftime('%Y%m%d_%H%M')}"
         os.makedirs("results", exist_ok=True)
-        torch.save(model.state_dict(), f'results/{save_name}.pth')
+        torch.save(model, f'results/{save_name}.pth')
         # print in file performance
         with open(f'results/{save_name}.txt', 'w') as f:
             for kk, vv in stat_test.items():
