@@ -103,9 +103,6 @@ def launch(
     cfg.train['use_tqdm'] = use_tqdm
 
     if use_wandb:
-        print("\n====== using wandb for experiment tracking ======\n", flush=True)
-
-    if use_wandb:
         wandb.init(
                 # set the wandb project where this run will be logged
                 project=project_name,  # "projunn_quantized",
@@ -134,7 +131,7 @@ def launch(
     model = train(model, dataset, **cfg.train)
     
     if dataset.test_ds:
-        test_batch_size = cfg['train']['batch_size']
+        test_batch_size = cfg.train['batch_size']
         stat_test = evaluate(
             dataset.test_ds,
             test_batch_size,
@@ -144,28 +141,16 @@ def launch(
             kind='test',
             torch_device=cfg.train['torch_device']
         )
-    for k, v in stat_test.items():
-        print('{}: {}\n'.format(k, v, decimals=2))
-
+    
     if save_network:
         if save_name is None:
             save_name = f"{cfg.model['name']}_{datetime.now().strftime('%Y%m%d_%H%M')}"
-        os.makedirs("results", exist_ok=True)
-        torch.save(model, f'results/{save_name}.pth')
+        os.makedirs("models", exist_ok=True)
+        torch.save(model, f'models/{save_name}.pth')
         # print in file performance
         with open(f'results/{save_name}.txt', 'w') as f:
             for kk, vv in stat_test.items():
                 f.write(f"{kk}: {vv}\n")
-        #if use_wandb:
-        #    artifact = wandb.Artifact(
-        #        name=f"model-{wandb.run.id}",
-        #        type="model"
-        #    )
-        #    checkpoint_path = f"checkpoints/{wandb.run.id}.pth"
-        #    os.makedirs("checkpoints", exist_ok=True)
-        #    torch.save({"model": model.state_dict()}, checkpoint_path)
-        #    artifact.add_file(checkpoint_path)
-        #    wandb.log_artifact(artifact)
 
     if use_wandb:
         wandb.log(stat_test)

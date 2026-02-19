@@ -6,7 +6,7 @@ experiments.py
 # Ignorer un dossier entier
 checkpoints/
 logs/
-results/
+models/
 wandb/
 
 # Ignorer les fichiers de données

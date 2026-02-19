@@ -19,10 +19,10 @@ MODEL:
   NAME: DSS
   NORMALIZATION: batch_norm
   POOLING: manytomany
-  SEED: [712,8]
+  SEED: [712] #[712,8,93,74,812]
   STATE_SIZE: 64
 TRAIN:
-  BATCH_SIZE: 50
+  BATCH_SIZE: 15
   DISPLAY_EPOCH: True
   DISPLAY_EVERY: null
   LOSS_FN: $torch.nn.CrossEntropyLoss
