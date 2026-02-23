@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+from collections import OrderedDict
+
 import opt_einsum as oe
 
 from layers import DSSLayer, TopPooling, InputEncoder, Normalization
@@ -46,26 +48,27 @@ class DSS(nn.Module):
         self.normalization_layer = Normalization(input_size, mode=normalization)
         self.output_layer = nn.Linear(input_size, output_size, bias=bias)
 
-        layers = []
-        for _ in range(n_layers):
+        self.dss_blocks = []
+
+        for i in range(n_layers):
             # stacker n_layers blocs DSS:
             # DSSLayer (core) + activation + dropout + linear (mixing layer)
-            layers.append(
-                DSSLayer(input_size=input_size, state_size=state_size, version=self.version, bidirectional=bidirectional, bias=bias)
-            )
-            layers.append(self.activation)
-            layers.append(nn.Dropout(dropout) if dropout > 0.0 else nn.Identity())
-            layers.append(nn.Linear(input_size, input_size, bias=bias))
-
-        self.dss_layers = nn.ModuleList(layers)
+            dss_block = nn.Sequential(OrderedDict([
+                ('dss_layer', DSSLayer(input_size=input_size, state_size=state_size, version=self.version, bidirectional=bidirectional, bias=bias)),
+                ('activation', self.activation),
+                ('dropout', nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()),
+                ('linear', nn.Linear(input_size, input_size, bias=bias))
+            ]))
+            setattr(self, f'dss_block_{i}', dss_block)
+            self.dss_blocks.append(dss_block)
 
         # top pooling layer
         self.top_pooling = TopPooling(mode=pooling)
 
     def forward(self, u):
         x = self.input_layer(u)
-        for layer in self.dss_layers:
-            x = layer(x)
+        for block in self.dss_blocks:
+            x = block(x)
         x = self.normalization_layer(x)
         x = self.top_pooling(x)
         x = self.output_layer(x)

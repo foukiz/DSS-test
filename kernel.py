@@ -85,6 +85,7 @@ class DSSKernel(nn.Module):
     def forward(self, L, state=None):
         assert L >= 1
 
+        # Lambda en version complexe
         Lambda = self._Lambda()                                              # [N]
         W = torch.view_as_complex(self.W)                                   # [H N]
 
@@ -124,4 +125,15 @@ class DSSKernel(nn.Module):
         return oe.contract('hn,lhn->lh', W, S).real.to(torch.float32), state     # [L H]
     
 
-    
+
+
+
+
+class MomentGeneratingFunctionKernel(nn.Module):
+    # TODO reprendre
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        pass
+
+    def forward(self, L, state=None):
+        pass

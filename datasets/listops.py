@@ -238,10 +238,11 @@ class ListOps(Dataset):
         print('Dataset size: %d/%d/%d' % (len(train), len(val), len(test)))
 
         if write:
+            print("Writing data to file (this may take a while)...")
             self.write_data(train, self.data_dir + '/train')
             self.write_data(val, self.data_dir + '/val')
             self.write_data(test, self.data_dir + '/test')
-            print('Finished writing all to file')
+            print('Finished writing')
             self.generate = False
         
         return train, val, test

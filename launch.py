@@ -70,6 +70,20 @@ def make_dataset(name, **kwargs):
     return dataset(**kwargs)
 
 
+def save_model(model, save_name, stat_dict=None):
+    os.makedirs("models", exist_ok=True)
+    torch.save(model, f'models/{save_name}.pth')
+    # print in file performance
+    if stat_dict:
+        try:
+            with open(f'models/{save_name}.txt', 'w') as f:
+                for kk, vv in stat_dict.items():
+                    f.write(f"{kk}: {vv}\n")
+        except FileNotFoundError:
+            print(f"Warning: could not save performance stats for model {save_name}, file not found")
+            pass
+
+
 
 
 
@@ -129,7 +143,7 @@ def launch(
     print("\n=== Launching training ===\n")
 
     model = train(model, dataset, **cfg.train)
-    
+
     if dataset.test_ds:
         test_batch_size = cfg.train['batch_size']
         stat_test = evaluate(
@@ -141,16 +155,12 @@ def launch(
             kind='test',
             torch_device=cfg.train['torch_device']
         )
-    
+
     if save_network:
         if save_name is None:
             save_name = f"{cfg.model['name']}_{datetime.now().strftime('%Y%m%d_%H%M')}"
-        os.makedirs("models", exist_ok=True)
-        torch.save(model, f'models/{save_name}.pth')
-        # print in file performance
-        with open(f'results/{save_name}.txt', 'w') as f:
-            for kk, vv in stat_test.items():
-                f.write(f"{kk}: {vv}\n")
+        if dataset.test_ds is None: stat_test=None
+        save_model(model, save_name, stat_dict=stat_test)
 
     if use_wandb:
         wandb.log(stat_test)
