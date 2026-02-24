@@ -78,5 +78,13 @@ class Dataset(ABC):
         raise NotImplementedError
 
     def __len__(self):
-        return
+        return self.tr_size + self.va_size + self.te_size
     
+    def __str__(self):
+        ret_str = (
+            f"{type(self).__name__}\n"
+            f"train size: {self.tr_size}\n"
+            f"validation size: {self.va_size}\n"
+            f"test size: {self.te_size}"
+        )
+        return ret_str

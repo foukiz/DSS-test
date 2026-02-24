@@ -27,6 +27,7 @@ def parse_args():
     )
     parser.add_argument("--use_wandb", action="store_true")
     parser.add_argument("--use_tqdm", action="store_true")
+    parser.add_argument("--no_train", action="store_true")
     parser.add_argument("--device", type=str, default='cpu')
     parser.add_argument("--save_network", action="store_true")
     parser.add_argument("--save_name", type=str, default=None)
@@ -70,7 +71,7 @@ def make_dataset(name, **kwargs):
     return dataset(**kwargs)
 
 
-def save_model(model, save_name, stat_dict=None):
+def save_model(model, dataset, save_name, stat_dict=None):
     os.makedirs("models", exist_ok=True)
     torch.save(model, f'models/{save_name}.pth')
     # print in file performance
@@ -79,6 +80,8 @@ def save_model(model, save_name, stat_dict=None):
             with open(f'models/{save_name}.txt', 'w') as f:
                 for kk, vv in stat_dict.items():
                     f.write(f"{kk}: {vv}\n")
+                f.write(f"\n\n================= dataset =================\n\n{str(dataset)}\n\n")
+                f.write(f"\n\n================== model ==================\n\n{str(model)}")
         except FileNotFoundError:
             print(f"Warning: could not save performance stats for model {save_name}, file not found")
             pass
@@ -116,6 +119,8 @@ def launch(
     use_tqdm = use_tqdm or cfg.train['use_tqdm']
     cfg.train['use_tqdm'] = use_tqdm
 
+    training = not ARGS['no_train']
+
     if use_wandb:
         wandb.init(
                 # set the wandb project where this run will be logged
@@ -140,9 +145,9 @@ def launch(
     cfg.instantiate_optimizer(params=model.parameters())
     cfg.instantiate_scheduler()
 
-    print("\n=== Launching training ===\n")
-
-    model = train(model, dataset, **cfg.train)
+    if training:
+        print("\n=== Launching training ===\n")
+        model = train(model, dataset, **cfg.train)
 
     if dataset.test_ds:
         test_batch_size = cfg.train['batch_size']
@@ -160,13 +165,13 @@ def launch(
         if save_name is None:
             save_name = f"{cfg.model['name']}_{datetime.now().strftime('%Y%m%d_%H%M')}"
         if dataset.test_ds is None: stat_test=None
-        save_model(model, save_name, stat_dict=stat_test)
+        save_model(model, dataset, save_name, stat_dict=stat_test)
 
     if use_wandb:
         wandb.log(stat_test)
         for kk, vv in stat_test.items():
             wandb.run.summary["final test evaluation/"+kk] = vv
-    
+
         wandb.finish()
 
     return model

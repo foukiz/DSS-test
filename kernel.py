@@ -129,11 +129,47 @@ class DSSKernel(nn.Module):
 
 
 
-class MomentGeneratingFunctionKernel(nn.Module):
-    # TODO reprendre
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        pass
+class GammaExpectationKernel(nn.Module):
+    """ Kernel computed as the expectation of (e^{Delta * X} - 1) / X * e^{Delta X j} where X
+        is a Gamma distributed random variable with shape parameter alpha, and scale parameter
+        theta.
+    """
+    
+    def __init__(
+            self,
+            H,
+            dt_min=1e-3,
+            dt_max=1e-1,
+            alpha_mean=5.0,
+            alpha_std=1.0,
+            theta_mean=1.0,
+            theta_std=0.5
+        ):
+        assert alpha_mean > 0 and alpha_std >= 0 and theta_mean > 0 and theta_std >= 0, "alpha_mean, alpha_std, theta_mean, theta_std must be positive"
+        super().__init__()
+        self.H = H
+        log_dt, log_alpha, log_theta = self.init(H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std)
+        self.register_parameter('log_dt', torch.nn.Parameter(log_dt))
+        self.register_parameter('log_alpha', torch.nn.Parameter(log_alpha))
+        self.register_parameter('log_theta', torch.nn.Parameter(log_theta))
+
+    def init(self, H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std):
+        log_dt = math.log(dt_min) + torch.rand(H) * (math.log(dt_max) - math.log(dt_min))
+        
+        # alpha, theta are respectively the shape and scale parameters of the Gamma distribution
+        while True:
+            alpha = torch.randn(H) * alpha_std + alpha_mean
+            theta = torch.randn(H) * theta_std + theta_mean
+            if (alpha > 0).all() and (theta > 0).all():
+                break
+        return log_dt, alpha.log(), theta.log()
 
     def forward(self, L, state=None):
-        pass
+        Delta = self.log_dt.exp().unsqueeze(-1)                                   # [H]
+        alpha = self.log_alpha.exp().unsqueeze(-1)                                # [H,1]
+        theta = self.log_theta.exp().unsqueeze(-1)                                # [H,1]
+
+        beta = 1. / theta + Delta * torch.arange(L+1, device=theta.device)        # [H L+1]
+        k = (1. / beta[...,:-1]**(alpha-1) - 1. / beta[...,1:]) / ((alpha - 1) * theta**alpha) # [H L]
+
+        return k

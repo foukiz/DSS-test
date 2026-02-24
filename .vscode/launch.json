@@ -46,6 +46,18 @@
                 "--save_network",
                 "--use_tqdm"
             ]
+        },
+        {
+            "name": "Test micro copy task",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/copytask/debug_copy_task_dss.yaml",
+                "--save_network",
+                "--no_train"
+            ]
         }
     ]
 }
