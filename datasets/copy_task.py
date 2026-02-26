@@ -56,6 +56,11 @@ class CopyMemory(Dataset):
 
     def get_val_ds(self):
         return self.val_ds
+    
+    def __str__(self):
+        str_ret = super().__str__()
+        str_ret += f"\nVocabulary size: {self.vocabulary}\nCopied sentence length: {self.sent_length}"
+        return str_ret
 
     # Generates Synthetic Data
     def Generate_Data_copy_task(self, size, length, K):

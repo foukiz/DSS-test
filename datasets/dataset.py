@@ -83,6 +83,7 @@ class Dataset(ABC):
     def __str__(self):
         ret_str = (
             f"{type(self).__name__}\n"
+            f"sequence length: {self.seq_length}\n"
             f"train size: {self.tr_size}\n"
             f"validation size: {self.va_size}\n"
             f"test size: {self.te_size}"

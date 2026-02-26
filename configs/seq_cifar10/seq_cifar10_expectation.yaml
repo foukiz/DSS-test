@@ -1,4 +1,4 @@
-PROJECT: "seq_CIFAR10_DSS"
+PROJECT: "seq_CIFAR10_expectation"
 DATASET:
   NAME: sCIFAR10
   TRAIN_SIZE: 45000
@@ -10,13 +10,13 @@ MODEL:
   DROPOUT: 0.2
   ENCODING: linear
   INPUT_SIZE: 512
-  KERNEL_VERSION: exp
+  KERNEL_VERSION: gamma
   N_LAYERS: 6
   NAME: DSS
   NORMALIZATION: layer_norm
   POOLING: average
   SEED: [712,8,93] #[712,8,93,74,812]
-  STATE_SIZE: 2
+  STATE_SIZE: 64
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -30,7 +30,7 @@ TRAIN:
   N_EPOCHS: 50
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: 4.e-3
+    lr: [5.e-3,1.e-4]
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:

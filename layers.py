@@ -3,7 +3,7 @@ import torch.nn as nn
 
 import opt_einsum as oe
 
-from kernel import DSSKernel
+from kernel import DSSKernel, GammaExpectationKernel
 
 
 
@@ -21,7 +21,8 @@ class DSSLayer(nn.Module):
         seed=None,
         max_kernel_length=None,  # max len of SSM kernel to be used
         **kwargs
-    ):
+    ):  
+        assert version in ['exp', 'softmax', 'mgf', 'gamma'], "version must be one of ['exp', 'softmax', 'mgf', 'gamma']"
         if seed: torch.manual_seed(seed)
         super().__init__()
 
@@ -32,7 +33,11 @@ class DSSLayer(nn.Module):
         self.D = nn.Parameter(torch.randn(self.h))
         
         self.max_kernel_length = max_kernel_length
-        self.kernel = DSSKernel(self.h, self.n, version=version)
+
+        if version in ('exp', 'softmax', 'mgf'):
+            self.kernel = DSSKernel(self.h, self.n, version=version)
+        elif version == 'gamma':
+            self.kernel = GammaExpectationKernel(self.h)
         self.bias = bias
 
     def forward(self, u): # absorbs return_output and transformer src mask
@@ -48,7 +53,7 @@ class DSSLayer(nn.Module):
 
         # Compute SS Kernel
         Lk = L if not self.max_kernel_length else min(self.max_kernel_length, L)
-        k, _ = self.kernel(L=Lk)  # (Lk H) (Lk B H)
+        k = self.kernel(L=Lk)  # (Lk H) (Lk B H)
         
         # y = multiply_polynomials(u.unsqueeze(1), k.unsqueeze(0))[..., :L]  # (B 1 H L), (1 H Lk) -> (B H L)
         # fft has to be performed along the seuquence length dimension ;

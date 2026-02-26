@@ -44,7 +44,7 @@ def train(
 
         # set the keys for training data we want to register, averaged over batches
         # / reinitialize them to 0
-        stat_epoch = {"loss": 0.}
+        stat_epoch = {"loss": 0., "lr": optimizer.param_groups[0]['lr']}
         if metrics:
             stat_epoch.update({name: 0. for name in metrics.keys()})
 
@@ -81,6 +81,7 @@ def train(
                 scheduler.step(stat_val['val_loss'])
             else:
                 scheduler.step()
+            stat_epoch["lr"] = optimizer.param_groups[0]['lr']
 
         if display_epoch:
             display_train_data(epoch_loss=stat_epoch['loss'], **stat_val)

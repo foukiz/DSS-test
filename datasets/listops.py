@@ -98,6 +98,11 @@ class ListOps(Dataset):
     @property
     def val_size(self):
         return self.va_size
+    
+    def __str__(self):
+        ret_str = super().__str__()
+        ret_str += f"\nMin length: {self.min_len}\nMax length: {self.max_len}\nMax depth: {self.max_depth}\nMax args: {self.max_args}"
+        return ret_str
 
     def get_train_ds(self):
         return self.train_ds

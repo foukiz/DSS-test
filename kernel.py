@@ -51,7 +51,7 @@ class DSSKernel(nn.Module):
         else:
             self.register_parameter('Lambda', torch.nn.Parameter(Lambda))  # [N,2]
 
-        self.register_parameter('W', torch.nn.Parameter(W))      # [C H N]
+        self.register_parameter('W', torch.nn.Parameter(W))      # [H N]
 
     def init(self, N, H, dt_min, dt_max, Lambda_init):
         if Lambda_init == 'hippo_skew_pos_imag':
@@ -122,7 +122,9 @@ class DSSKernel(nn.Module):
             if 'no-scale' not in self.version:
                 W = W * (dt_Lambda.exp() - 1.) * reciprocal(Lambda, clamp=True)  # [H N]
 
-        return oe.contract('hn,lhn->lh', W, S).real.to(torch.float32), state     # [L H]
+        # version papier DSS, qui retourne l'état caché (mais ne sert à rien)
+        #return oe.contract('hn,lhn->lh', W, S).real.to(torch.float32), state     # [L H]
+        return oe.contract('hn,lhn->lh', W, S).real.to(torch.float32)            # [L H]
     
 
 
@@ -165,11 +167,11 @@ class GammaExpectationKernel(nn.Module):
         return log_dt, alpha.log(), theta.log()
 
     def forward(self, L, state=None):
-        Delta = self.log_dt.exp().unsqueeze(-1)                                   # [H]
-        alpha = self.log_alpha.exp().unsqueeze(-1)                                # [H,1]
-        theta = self.log_theta.exp().unsqueeze(-1)                                # [H,1]
+        Delta = self.log_dt.exp().unsqueeze(0)                                   # [1 H]
+        alpha = self.log_alpha.exp().unsqueeze(0)                                # [1 H]
+        theta = self.log_theta.exp().unsqueeze(0)                                # [1 H]
 
-        beta = 1. / theta + Delta * torch.arange(L+1, device=theta.device)        # [H L+1]
-        k = (1. / beta[...,:-1]**(alpha-1) - 1. / beta[...,1:]) / ((alpha - 1) * theta**alpha) # [H L]
+        beta = 1. / theta + Delta * torch.arange(L+1, device=theta.device).unsqueeze(-1) # [L+1 H]
+        k = (beta[:-1,...]**(1-alpha) - beta[1:,...]**(1-alpha)) / ((alpha - 1) * theta**alpha) # [L H]
 
         return k

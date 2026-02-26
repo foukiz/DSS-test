@@ -56,7 +56,31 @@
             "args": [
                 "--config", "configs/copytask/debug_copy_task_dss.yaml",
                 "--save_network",
-                "--no_train"
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug copytask Exp",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/copytask/copy_task_expectation.yaml",
+                "--save_network",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Image Exp",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_expectation.yaml",
+                "--save_network",
+                "--use_tqdm"
             ]
         }
     ]

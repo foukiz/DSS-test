@@ -1,22 +1,28 @@
-PROJECT: "seq_CIFAR10_DSS"
+PROJECT: "listops_expectation"
 DATASET:
-  NAME: sCIFAR10
-  TRAIN_SIZE: 45000
-  VAL_SIZE: 5000
+  NAME: ListOps
+  MIN_LEN: 500
+  MAX_LEN: 2000
+  MAX_DEPTH: 10
+  MAX_ARGS: 10
+  TEST_SIZE: 2000
+  TRAIN_SIZE: 96000
+  VAL_SIZE: 2000
+  GENERATE: False
+  PREPROCESSED: True
 MODEL:
   ACTIVATION: $torch.nn.GELU 
   BIAS: True
-  BIDIRECTIONAL: False
-  DROPOUT: 0.2
-  ENCODING: linear
-  INPUT_SIZE: 512
-  KERNEL_VERSION: exp
+  INPUT_SIZE: 128
   N_LAYERS: 6
-  NAME: DSS
-  NORMALIZATION: layer_norm
+  KERNEL_VERSION: gamma
+  BIDIRECTIONAL: False
+  ENCODING: embedding
   POOLING: average
+  NAME: DSS
+  DROPOUT: 0.
+  NORMALIZATION: batch_norm
   SEED: [712,8,93] #[712,8,93,74,812]
-  STATE_SIZE: 2
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -30,11 +36,11 @@ TRAIN:
   N_EPOCHS: 50
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: 4.e-3
+    lr: [5.e-3,1.e-4]
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    patience: 10
+    patience: 5
   TORCH_DEVICE: cpu
   USE_TQDM: False
   USE_WANDB: False

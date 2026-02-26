@@ -10,6 +10,9 @@ from layers import DSSLayer, TopPooling, InputEncoder, Normalization
 
 
 
+DEFAULT_STATE_SIZE = 64
+
+
 
 
 class DSS(nn.Module):
@@ -17,9 +20,9 @@ class DSS(nn.Module):
     def __init__(
         self,
         input_size,
-        state_size,
         output_size,
         data_dim,
+        state_size=64,
         bidirectional=False,
         activation='gelu',
         kernel_version='exp',

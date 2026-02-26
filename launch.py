@@ -8,7 +8,8 @@ import torch
 import argparse
 import wandb
 
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 import yaml
 
 from training import train, evaluate
@@ -147,7 +148,10 @@ def launch(
 
     if training:
         print("\n=== Launching training ===\n")
+        start = time.time()
         model = train(model, dataset, **cfg.train)
+        elapsed = time.time() - start
+        print(f"\nTraining time: {timedelta(seconds=int(elapsed))}\n")
 
     if dataset.test_ds:
         test_batch_size = cfg.train['batch_size']
@@ -173,6 +177,8 @@ def launch(
             wandb.run.summary["final test evaluation/"+kk] = vv
 
         wandb.finish()
+
+    print("\n\n")
 
     return model
 
