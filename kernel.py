@@ -160,7 +160,7 @@ class GammaExpectationKernel(nn.Module):
         
         # alpha, theta are respectively the shape and scale parameters of the Gamma distribution
         while True:
-            alpha = torch.randn(H) * alpha_std + alpha_mean
+            alpha = torch.randn(H) * alpha_std + alpha_mean - 1.
             theta = torch.randn(H) * theta_std + theta_mean
             if (alpha > 0).all() and (theta > 0).all():
                 break
@@ -168,7 +168,7 @@ class GammaExpectationKernel(nn.Module):
 
     def forward(self, L, state=None):
         Delta = self.log_dt.exp().unsqueeze(0)                                   # [1 H]
-        alpha = self.log_alpha.exp().unsqueeze(0)                                # [1 H]
+        alpha = self.log_alpha.exp().unsqueeze(0) + 1.                            # [1 H]
         theta = self.log_theta.exp().unsqueeze(0)                                # [1 H]
 
         beta = 1. / theta + Delta * torch.arange(L+1, device=theta.device).unsqueeze(-1) # [L+1 H]

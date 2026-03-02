@@ -44,7 +44,8 @@
             "args": [
                 "--config", "configs/seq_cifar10/seq_cifar10_dss.yaml",
                 "--save_network",
-                "--use_tqdm"
+                "--use_tqdm",
+                "--use_wandb"
             ]
         },
         {
@@ -56,7 +57,8 @@
             "args": [
                 "--config", "configs/copytask/debug_copy_task_dss.yaml",
                 "--save_network",
-                "--use_tqdm"
+                "--use_tqdm",
+                "--use_wandb"
             ]
         },
         {
@@ -80,7 +82,8 @@
             "args": [
                 "--config", "configs/seq_cifar10/seq_cifar10_expectation.yaml",
                 "--save_network",
-                "--use_tqdm"
+                "--use_tqdm",
+                "--use_wandb"
             ]
         }
     ]
