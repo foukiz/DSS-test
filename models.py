@@ -32,7 +32,8 @@ class DSS(nn.Module):
         n_layers=1,
         encoding=None,
         pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
-        seed=None
+        seed=None,
+        **kwargs
     ):
         if seed:
             torch.manual_seed(seed)
@@ -57,7 +58,7 @@ class DSS(nn.Module):
             # stacker n_layers blocs DSS:
             # DSSLayer (core) + activation + dropout + linear (mixing layer)
             dss_block = nn.Sequential(OrderedDict([
-                ('dss_layer', DSSLayer(input_size=input_size, state_size=state_size, version=self.version, bidirectional=bidirectional, bias=bias)),
+                ('dss_layer', DSSLayer(input_size=input_size, state_size=state_size, version=self.version, bidirectional=bidirectional, bias=bias, **kwargs)),
                 ('activation', self.activation),
                 ('dropout', nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()),
                 ('linear', nn.Linear(input_size, input_size, bias=bias))

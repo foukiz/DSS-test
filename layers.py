@@ -37,7 +37,7 @@ class DSSLayer(nn.Module):
         if version in ('exp', 'softmax', 'mgf'):
             self.kernel = DSSKernel(self.h, self.n, version=version)
         elif version == 'gamma':
-            self.kernel = GammaExpectationKernel(self.h)
+            self.kernel = GammaExpectationKernel(self.h, **kwargs)
         self.bias = bias
 
     def forward(self, u): # absorbs return_output and transformer src mask

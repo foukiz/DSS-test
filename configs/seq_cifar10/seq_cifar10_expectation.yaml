@@ -5,6 +5,8 @@ DATASET:
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU 
+  ALPHA_MIN: 4.0
+  ALPHA_MAX: 6.0
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: 0.2
@@ -17,6 +19,8 @@ MODEL:
   POOLING: average
   SEED: [712] #[712,8,93,74,812]
   STATE_SIZE: 64
+  THETA_MIN: 0.5
+  THETA_MAX: 2
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -27,7 +31,7 @@ TRAIN:
   METRICS_CONFIG:
     task: multiclass
     num_classes: 10
-  N_EPOCHS: 50
+  N_EPOCHS: 32
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
     lr: [1.e-2] #[1.e-3,5.e-3]

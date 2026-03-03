@@ -142,36 +142,34 @@ class GammaExpectationKernel(nn.Module):
             H,
             dt_min=1e-3,
             dt_max=1e-1,
-            alpha_mean=5.0,
-            alpha_std=1.0,
-            theta_mean=1.0,
-            theta_std=0.5
+            alpha_min=2.0,
+            alpha_max=7.0,
+            theta_min=0.5,
+            theta_max=2.0,
+            epsilon=1e-3           # avoids division by 0
         ):
-        assert alpha_mean > 0 and alpha_std >= 0 and theta_mean > 0 and theta_std >= 0, "alpha_mean, alpha_std, theta_mean, theta_std must be positive"
+        assert alpha_min > 0 and alpha_max >= alpha_min and theta_min > 0 and theta_max >= theta_min, "alpha_min, alpha_max, theta_min, theta_max must be positive and alpha_min <= alpha_max, theta_min <= theta_max"
         super().__init__()
         self.H = H
-        log_dt, log_alpha, log_theta = self.init(H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std)
+        self.epsilon = epsilon
+        log_dt, log_alpha, log_theta = self.init(H, dt_min, dt_max, alpha_min, alpha_max, theta_min, theta_max)
         self.register_parameter('log_dt', torch.nn.Parameter(log_dt))
         self.register_parameter('log_alpha', torch.nn.Parameter(log_alpha))
         self.register_parameter('log_theta', torch.nn.Parameter(log_theta))
 
-    def init(self, H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std):
+    def init(self, H, dt_min, dt_max, alpha_min, alpha_max, theta_min, theta_max):
         log_dt = math.log(dt_min) + torch.rand(H) * (math.log(dt_max) - math.log(dt_min))
-        
-        # alpha, theta are respectively the shape and scale parameters of the Gamma distribution
-        while True:
-            alpha = torch.randn(H) * alpha_std + alpha_mean - 1.
-            theta = torch.randn(H) * theta_std + theta_mean
-            if (alpha > 0).all() and (theta > 0).all():
-                break
-        return log_dt, alpha.log(), theta.log()
+        log_alpha = math.log(alpha_min) + torch.rand(H) * (math.log(alpha_max) - math.log(alpha_min))
+        log_theta = math.log(theta_min) + torch.rand(H) * (math.log(theta_max) - math.log(theta_min))
+
+        return log_dt, log_alpha, log_theta
 
     def forward(self, L, state=None):
         Delta = self.log_dt.exp().unsqueeze(0)                                   # [1 H]
-        alpha = self.log_alpha.exp().unsqueeze(0) + 1.                            # [1 H]
-        theta = self.log_theta.exp().unsqueeze(0)                                # [1 H]
+        alpha = self.log_alpha.exp().unsqueeze(0) + self.epsilon                 # [1 H]
+        theta = self.log_theta.exp().unsqueeze(0) + self.epsilon                 # [1 H]
 
         beta = 1. / theta + Delta * torch.arange(L+1, device=theta.device).unsqueeze(-1) # [L+1 H]
-        k = (beta[:-1,...]**(1-alpha) - beta[1:,...]**(1-alpha)) / ((alpha - 1) * theta**alpha) # [L H]
+        k = (beta[:-1,...]**(-alpha) - beta[1:,...]**(-alpha)) / (alpha * theta**(alpha+1)) # [L H]
 
         return k
