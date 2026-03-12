@@ -1,4 +1,4 @@
-PROJECT: "copytask_expectation"
+PROJECT: "copytask_expectation_with_multip_cst"
 DATASET:
   NAME: CopyMemory
   SENT_LENGTH: 10
@@ -8,10 +8,10 @@ DATASET:
   VAL_SIZE: 2000
   VOCABULARY: 10
 MODEL:
-  ALPHA_MIN: 4.0
-  ALPHA_MAX: 6.0
-  THETA_MIN: 0.5
-  THETA_MAX: 2
+  ALPHA_MEAN: 1.0
+  ALPHA_STD: 0.5
+  THETA_MEAN: 0.5
+  THETA_STD: 0.2
   ACTIVATION: $torch.nn.GELU
   BIAS: True
   BIDIRECTIONAL: False
@@ -22,8 +22,9 @@ MODEL:
   N_LAYERS: 6
   NAME: DSS
   NORMALIZATION: batch_norm
+  ORDER_2_APPROX: False
   POOLING: manytomany
-  SEED: [712,8,93] #[712,8,93,74,812]
+  SEED: [712,8] #[712,8,93,74,812]
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -34,11 +35,11 @@ TRAIN:
   N_EPOCHS: 20
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [1.e-2]
+    lr: [1.e-2,5.e-3]
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.StepLR
   SCHEDULER_CONFIG:
-    gamma: 0.8
+    gamma: 0.9
     step_size: 1
   TORCH_DEVICE: cpu
   USE_TQDM: False

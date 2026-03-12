@@ -1,42 +1,43 @@
-PROJECT: "copytask_DSS"
+PROJECT: "copytask_uniform_DL"
 DATASET:
   NAME: CopyMemory
   SENT_LENGTH: 10
-  SEQ_LENGTH: 100
-  TEST_SIZE: 20
-  TRAIN_SIZE: 40
-  VAL_SIZE: 20
+  SEQ_LENGTH: 1000
+  TEST_SIZE: 2000
+  TRAIN_SIZE: 512000
+  VAL_SIZE: 2000
   VOCABULARY: 10
 MODEL:
+  ALPHA_MEAN: 0.2
+  ALPHA_STD: 0.1
   ACTIVATION: $torch.nn.GELU
-  ORDER_2_APPROX: True
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: 0.
   ENCODING: embedding
-  INPUT_SIZE: 8
+  INPUT_SIZE: 128
   KERNEL_VERSION: uniform
   N_LAYERS: 6
   NAME: DSS
   NORMALIZATION: batch_norm
+  ORDER_2_APPROX: True
   POOLING: manytomany
-  SEED: [712] #[712,8,93,74,812]
-  STATE_SIZE: 64
+  SEED: [712,8,93,74,812]
 TRAIN:
-  BATCH_SIZE: 20
+  BATCH_SIZE: 50
   DISPLAY_EPOCH: True
   DISPLAY_EVERY: null
   LOSS_FN: $torch.nn.CrossEntropyLoss
   LOSS_CONFIG: null
   METRICS: null
-  N_EPOCHS: 2
+  N_EPOCHS: 20
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: 1.e-3
+    lr: [5.e-3]
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.StepLR
   SCHEDULER_CONFIG:
-    gamma: 0.8
+    gamma: 0.9
     step_size: 1
   TORCH_DEVICE: cpu
   USE_TQDM: False

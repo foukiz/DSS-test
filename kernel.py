@@ -142,34 +142,108 @@ class GammaExpectationKernel(nn.Module):
             H,
             dt_min=1e-3,
             dt_max=1e-1,
-            alpha_min=2.0,
-            alpha_max=7.0,
-            theta_min=0.5,
-            theta_max=2.0,
-            epsilon=1e-3           # avoids division by 0
+            alpha_mean=4.0,
+            alpha_std=1.0,
+            theta_mean=1.0,
+            theta_std=0.5,
+            epsilon=1e-6,           # avoids division by 0
+            order_2_approx=False
         ):
-        assert alpha_min > 0 and alpha_max >= alpha_min and theta_min > 0 and theta_max >= theta_min, "alpha_min, alpha_max, theta_min, theta_max must be positive and alpha_min <= alpha_max, theta_min <= theta_max"
+        assert alpha_mean > 0 and alpha_std >= 0 and theta_mean > 0 and theta_std >= 0, "alpha_mean, alpha_std, theta_mean, theta_std must be positive and alpha_std >= 0, theta_std >= 0"
         super().__init__()
         self.H = H
         self.epsilon = epsilon
-        log_dt, log_alpha, log_theta = self.init(H, dt_min, dt_max, alpha_min, alpha_max, theta_min, theta_max)
+        self.order_2_approx = order_2_approx
+
+        log_dt, alpha, theta = self.init(H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std)
         self.register_parameter('log_dt', torch.nn.Parameter(log_dt))
-        self.register_parameter('log_alpha', torch.nn.Parameter(log_alpha))
-        self.register_parameter('log_theta', torch.nn.Parameter(log_theta))
+        self.register_parameter('log_alpha', torch.nn.Parameter(alpha.log()))
+        self.register_parameter('log_theta', torch.nn.Parameter(theta.log()))
+        self.d = nn.Parameter(torch.rand(H))                        # [H]
 
-    def init(self, H, dt_min, dt_max, alpha_min, alpha_max, theta_min, theta_max):
+    def init(self, H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std):
         log_dt = math.log(dt_min) + torch.rand(H) * (math.log(dt_max) - math.log(dt_min))
-        log_alpha = math.log(alpha_min) + torch.rand(H) * (math.log(alpha_max) - math.log(alpha_min))
-        log_theta = math.log(theta_min) + torch.rand(H) * (math.log(theta_max) - math.log(theta_min))
+        alpha = torch.nn.init.trunc_normal_(
+            torch.empty(H), mean=alpha_mean, std=alpha_std, a=self.epsilon, b=float('inf'))
+        theta = torch.nn.init.trunc_normal_(
+            torch.empty(H), mean=theta_mean, std=theta_std, a=self.epsilon, b=float('inf'))
 
-        return log_dt, log_alpha, log_theta
+        return log_dt, alpha, theta
 
     def forward(self, L, state=None):
+        if self.order_2_approx: return self.Order2DL_forward(L)
+
         Delta = self.log_dt.exp().unsqueeze(0)                                   # [1 H]
         alpha = self.log_alpha.exp().unsqueeze(0) + self.epsilon                 # [1 H]
         theta = self.log_theta.exp().unsqueeze(0) + self.epsilon                 # [1 H]
+        d = self.d.unsqueeze(0)                                                  # [1 H]
 
-        beta = 1. / theta + Delta * torch.arange(L+1, device=theta.device).unsqueeze(-1) # [L+1 H]
-        k = (beta[:-1,...]**(-alpha) - beta[1:,...]**(-alpha)) / (alpha * theta**(alpha+1)) # [L H]
+        beta = 1. / theta + Delta * torch.arange(L+1, device=theta.device).unsqueeze(-1)         # [L+1 H]
+        k = d * (beta[:-1,...]**(-alpha) - beta[1:,...]**(-alpha)) / (alpha * theta**(alpha+1))  # [L H]
 
         return k
+    
+    def Order2DL_forward(self, L, state=None):
+        raise NotImplementedError
+
+
+
+
+class UniformExpectationKernel(nn.Module):
+    
+    def __init__(
+        self,
+        H,
+        dt_min=1e-3,
+        dt_max=1e-1,
+        alpha_mean=0.2,
+        alpha_std=0.1,
+        epsilon=1e-6,           # avoids division by 0
+        order_2_approx=False
+    ):
+        assert alpha_mean > 0 and alpha_std >= 0, "alpha_mean should and alpha_std must be positive"
+        super().__init__()
+        self.H = H
+        self.epsilon = epsilon
+        self.order_2_approx = order_2_approx
+        log_dt, alpha = self.init(H, dt_min, dt_max, alpha_mean, alpha_std)
+        self.register_parameter('log_dt', torch.nn.Parameter(log_dt))
+        self.register_parameter('log_alpha', torch.nn.Parameter(alpha.log()))
+        self.d = nn.Parameter(torch.rand(H))
+
+    def init(self, H, dt_min, dt_max, alpha_mean, alpha_std):
+        log_dt = math.log(dt_min) + torch.rand(H) * (math.log(dt_max) - math.log(dt_min))
+        alpha = torch.nn.init.trunc_normal_(
+            torch.empty(H), mean=alpha_mean, std=alpha_std, a=self.epsilon, b=float('inf'))
+        return log_dt, alpha
+
+    def forward(self, L, state=None):
+        if self.order_2_approx: return self.Order2DL_forward(L)
+        raise NotImplementedError
+
+    def Order2DL_forward(self, L, state=None):
+        Delta = self.log_dt.exp().unsqueeze(0)                                   # [1 H]
+        # alpha is parametrized to be negative
+        alpha = -self.log_alpha.exp().unsqueeze(0) - self.epsilon                 # [1 H]
+        d = self.d.unsqueeze(0)                                                  # [1 H]
+
+        j = torch.arange(L, device=alpha.device).unsqueeze(1)
+        exp = Delta - Delta**2 * (j + 1./2.) * alpha/2 + Delta**3 * (j**2 + j + 1./3.) * alpha**2 / 6.
+        return d * exp
+
+
+
+
+
+
+class ExpectationKernel(nn.Module):
+    """ Base class for other expctation kernels. #TODO
+    """
+
+    def __init__(self):
+        #self.exp_X
+        #self.exp_X2
+        pass
+
+    def Order2DL_forward(self):
+        return 

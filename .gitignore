@@ -2,6 +2,7 @@
 instructions.txt
 launch.slurm
 experiments.py
+tests.py
 
 # Ignorer un dossier entier
 checkpoints/

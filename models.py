@@ -35,6 +35,8 @@ class DSS(nn.Module):
         seed=None,
         **kwargs
     ):
+        assert n_layers > 0, (
+            f"DSS model should have at least one core dss layer, found n_layers = {n_layers}")
         if seed:
             torch.manual_seed(seed)
             if torch.cuda.is_available():
@@ -77,3 +79,13 @@ class DSS(nn.Module):
         x = self.top_pooling(x)
         x = self.output_layer(x)
         return x
+
+    def __str__(self):
+        ret_str = ""
+        ret_str += str(self.input_layer) + "\n"
+        ret_str += str(self.dss_block_0) + "\n"
+        ret_str += "X {}".format(len(self.dss_blocks)) + "\n"
+        ret_str += str(self.normalization_layer) + "\n"
+        ret_str += str(self.top_pooling) + "\n"
+        ret_str += str(self.output_layer)
+        return ret_str

@@ -3,7 +3,7 @@ import torch.nn as nn
 
 import opt_einsum as oe
 
-from kernel import DSSKernel, GammaExpectationKernel
+from kernel import DSSKernel, GammaExpectationKernel, UniformExpectationKernel
 
 
 
@@ -22,7 +22,7 @@ class DSSLayer(nn.Module):
         max_kernel_length=None,  # max len of SSM kernel to be used
         **kwargs
     ):  
-        assert version in ['exp', 'softmax', 'mgf', 'gamma'], "version must be one of ['exp', 'softmax', 'mgf', 'gamma']"
+        assert version in ['exp', 'softmax', 'mgf', 'gamma', 'uniform'], "version must be one of ['exp', 'softmax', 'mgf', 'gamma', 'uniform]"
         if seed: torch.manual_seed(seed)
         super().__init__()
 
@@ -38,6 +38,8 @@ class DSSLayer(nn.Module):
             self.kernel = DSSKernel(self.h, self.n, version=version)
         elif version == 'gamma':
             self.kernel = GammaExpectationKernel(self.h, **kwargs)
+        elif version == 'uniform':
+            self.kernel = UniformExpectationKernel(self.h, **kwargs)
         self.bias = bias
 
     def forward(self, u): # absorbs return_output and transformer src mask

@@ -1,26 +1,26 @@
-PROJECT: "seq_CIFAR10_expectation"
+PROJECT: "seq_CIFAR10_expectation_with_multip_cst"
 DATASET:
   NAME: sCIFAR10
   TRAIN_SIZE: 45000
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU 
-  ALPHA_MIN: 4.0
-  ALPHA_MAX: 6.0
+  ALPHA_MEAN: [3.]
+  ALPHA_STD: [0.5]
+  THETA_MEAN: 1.0
+  THETA_STD: 0.5
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: 0.2
   ENCODING: linear
-  INPUT_SIZE: 512
+  INPUT_SIZE: 1024 #512
   KERNEL_VERSION: gamma
   N_LAYERS: 6
   NAME: DSS
   NORMALIZATION: layer_norm
   POOLING: average
-  SEED: [712] #[712,8,93,74,812]
+  SEED: [93,74] #[712,8,93,74,812]
   STATE_SIZE: 64
-  THETA_MIN: 0.5
-  THETA_MAX: 2
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -31,15 +31,15 @@ TRAIN:
   METRICS_CONFIG:
     task: multiclass
     num_classes: 10
-  N_EPOCHS: 32
+  N_EPOCHS: 40
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [1.e-2] #[1.e-3,5.e-3]
+    lr: [5.e-3]
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.StepLR
   SCHEDULER_CONFIG:
-    gamma: 0.5
-    step_size: 10
+    gamma: 0.9
+    step_size: 1
   TORCH_DEVICE: cpu
   USE_TQDM: False
   USE_WANDB: False

@@ -72,7 +72,7 @@ def make_dataset(name, **kwargs):
     return dataset(**kwargs)
 
 
-def save_model(model, dataset, save_name, stat_dict=None):
+def save_model(model, dataset, save_name, stat_dict=None, **kwargs):
     os.makedirs("models", exist_ok=True)
     torch.save(model, f'models/{save_name}.pth')
     # print in file performance
@@ -81,6 +81,10 @@ def save_model(model, dataset, save_name, stat_dict=None):
             with open(f'models/{save_name}.txt', 'w') as f:
                 for kk, vv in stat_dict.items():
                     f.write(f"{kk}: {vv}\n")
+
+                if kwargs.get('run_url'):
+                    f.write(f"\nWandb run URL:\n{kwargs['run_url']}\n\n")
+
                 f.write(f"\n\n================= dataset =================\n\n{str(dataset)}\n\n")
                 f.write(f"\n\n================== model ==================\n\n{str(model)}")
         except FileNotFoundError:
@@ -169,7 +173,8 @@ def launch(
         if save_name is None:
             save_name = f"{cfg.model['name']}_{datetime.now().strftime('%Y%m%d_%H%M')}"
         if dataset.test_ds is None: stat_test=None
-        save_model(model, dataset, save_name, stat_dict=stat_test)
+        run_url = wandb.run.url if use_wandb else None
+        save_model(model, dataset, save_name, stat_dict=stat_test, run_url=run_url)
 
     if use_wandb:
         wandb.log(stat_test)
