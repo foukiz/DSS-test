@@ -3,6 +3,7 @@ instructions.txt
 launch.slurm
 experiments.py
 tests.py
+hist_gamma.png
 
 # Ignorer un dossier entier
 checkpoints/
