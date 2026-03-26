@@ -16,7 +16,7 @@ from training import train, evaluate
 from config import Config
 from models import *
 
-from datasets import copy_task, listops, seq_cifar10
+from datasets import copy_task, listops, seq_cifar10, imdb
 
 
 
@@ -58,7 +58,8 @@ def make_dataset(name, **kwargs):
     datasets = {
         'copymemory': copy_task.CopyMemory,
         'listops': listops.ListOps,
-        'scifar10': seq_cifar10.sCIFAR10
+        'scifar10': seq_cifar10.sCIFAR10,
+        'imdb': imdb.IMDB
     }
     if low_name not in datasets:
         err_str = "{} is not a correct dataset name, accepted datasets are".format(low_name)
@@ -142,10 +143,12 @@ def launch(
             print("Warning: cuda device specified but not available, using cpu instead")
             device = 'cpu'
 
+    kwargs = {}
     dataset = make_dataset(**cfg.dataset)
+    if hasattr(dataset, 'padding_idx'): kwargs.update({'padding_idx': dataset.padding_idx})
     input_dim = dataset.input_flat_dimension
     output_dim = dataset.num_outputs
-    model = make_model(data_dim=input_dim, output_size=output_dim, **cfg.model).to(device)
+    model = make_model(data_dim=input_dim, output_size=output_dim, **cfg.model, **kwargs).to(device)
 
     cfg.instantiate_optimizer(params=model.parameters())
     cfg.instantiate_scheduler()

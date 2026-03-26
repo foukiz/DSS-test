@@ -3,13 +3,15 @@ import torch.nn as nn
 
 import opt_einsum as oe
 
-from kernel import DSSKernel, GammaExpectationKernel, UniformExpectationKernel
+from kernel import DSSKernel, GammaExpectationKernel, UniformExpectationKernel, ExponentialExpectationKernel
 
 
 
 
 
 class DSSLayer(nn.Module):
+
+    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'uniform', 'exponential']
 
     def __init__(
         self,
@@ -22,7 +24,7 @@ class DSSLayer(nn.Module):
         max_kernel_length=None,  # max len of SSM kernel to be used
         **kwargs
     ):  
-        assert version in ['exp', 'softmax', 'mgf', 'gamma', 'uniform'], "version must be one of ['exp', 'softmax', 'mgf', 'gamma', 'uniform]"
+        assert version in self.VERSIONS, "version must be one of {}".format(self.VERSIONS)
         if seed: torch.manual_seed(seed)
         super().__init__()
 
@@ -40,6 +42,8 @@ class DSSLayer(nn.Module):
             self.kernel = GammaExpectationKernel(self.h, **kwargs)
         elif version == 'uniform':
             self.kernel = UniformExpectationKernel(self.h, **kwargs)
+        elif version == 'exponential':
+            self.kernel = ExponentialExpectationKernel(self.h, **kwargs)
         self.bias = bias
 
     def forward(self, u): # absorbs return_output and transformer src mask
@@ -87,7 +91,7 @@ class InputEncoder(nn.Module):
     # TODO une classe d'encoder d'input qui met les données sous le bon format pour le DSSLayer
     # par exemple un embedding pour ListOps, ou une simple couche linéaire pour CopyTask
 
-    def __init__(self, data_dim, input_size, mode='embedding'):
+    def __init__(self, data_dim, input_size, mode='embedding', **kwargs):
         super().__init__()
         assert mode in ['embedding', 'linear', 'identity'], (f"mode must be one of "
                                 "['embedding', 'linear', 'identity'], found {mode}")
@@ -96,7 +100,11 @@ class InputEncoder(nn.Module):
         self.mode = mode
 
         if mode == 'embedding':
-            self.layer = nn.Embedding(data_dim, input_size)
+            if "padding_idx" in kwargs:
+                padding_idx = kwargs['padding_idx']
+            else:
+                padding_idx = None
+            self.layer = nn.Embedding(data_dim, input_size, padding_idx=padding_idx)
         if mode == 'linear':
             self.layer = nn.Linear(data_dim, input_size)
         if mode == 'identity':

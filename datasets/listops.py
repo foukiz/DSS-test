@@ -48,7 +48,7 @@ class ListOps(Dataset):
         max_args=10,
         generate=False,
         preprocessed=True,
-        data_dir='listops_data',
+        data_dir='data/listops_data',
         **kwargs
     ):
         self.max_len = max_len
@@ -116,9 +116,9 @@ class ListOps(Dataset):
     def make_vocab(self):
         """ Vocab is made out of the tokens in the validation set """
         try:
-          temp_val = pd.read_csv('listops_data/val.tsv', sep='\t', usecols=['Source'])
+            temp_val = pd.read_csv(self.data_dir + '/val.tsv', sep='\t', usecols=['Source'])
         except FileNotFoundError:
-          raise FileNotFoundError('ListOps Data files were not generated yet')
+            raise FileNotFoundError('ListOps Data files were not generated yet')
         temp_val['Source'] = temp_val['Source'].apply(rename_close_brackets)
         temp_val['Source'] = temp_val['Source'].apply(whitespace_tokenize)
 
@@ -273,6 +273,7 @@ class ListOps(Dataset):
 
         if self.vocab is None:
             self.vocab = self.make_vocab()
+        self.padding_idx = self.vocab["<pad>"]
 
         self.input_dimension = len(self.vocab) - 1
 

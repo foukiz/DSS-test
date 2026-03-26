@@ -17,10 +17,10 @@ class sCIFAR10(Dataset):
                 assert kwargs['train_size'] + kwargs['val_size'] == 50000, (
                     "validation and train sets should contain in a whole 50000 examples")
             else: kwargs['val_size'] = 50000 - kwargs['train_size']
-            train_size = kwargs['train_size']
-            val_size = kwargs['val_size']
-            kwargs.pop('train_size')
-            kwargs.pop('val_size')
+            #train_size = kwargs['train_size']
+            #val_size = kwargs['val_size']
+            train_size = kwargs.pop('train_size')
+            val_size = kwargs.pop('val_size')
         super().__init__(train_size, val_size, test_size, seq_length, **kwargs)
 
     @property
@@ -78,10 +78,10 @@ class sCIFAR10(Dataset):
         print("-" * 43 + f" Loading {type(self).__name__} " + "-" * 43)
 
         train_ds, val_ds = torch.utils.data.random_split(
-            datasets.CIFAR10("cifar10_data", train=True, download=True, transform=transform),
+            datasets.CIFAR10("data/cifar10_data", train=True, download=True, transform=transform),
             [self.train_size, self.val_size]
         )
-        test_ds = datasets.CIFAR10("cifar10_data", train=False, download=True, transform=transform)
+        test_ds = datasets.CIFAR10("data/cifar10_data", train=False, download=True, transform=transform)
 
         print("-" * 43 + f" {type(self).__name__} loaded " + "-" * 43)
 

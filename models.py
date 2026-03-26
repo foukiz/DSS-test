@@ -50,7 +50,7 @@ class DSS(nn.Module):
         self.bias = bias
         self.version = kernel_version
 
-        self.input_layer = InputEncoder(data_dim, input_size, mode=encoding)
+        self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
         self.normalization_layer = Normalization(input_size, mode=normalization)
         self.output_layer = nn.Linear(input_size, output_size, bias=bias)
 
@@ -81,8 +81,7 @@ class DSS(nn.Module):
         return x
 
     def __str__(self):
-        ret_str = ""
-        ret_str += str(self.input_layer) + "\n"
+        ret_str = str(self.input_layer) + "\n"
         ret_str += str(self.dss_block_0) + "\n"
         ret_str += "X {}".format(len(self.dss_blocks)) + "\n"
         ret_str += str(self.normalization_layer) + "\n"

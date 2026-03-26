@@ -2,6 +2,9 @@ import copy
 from itertools import product
 import os
 import socket
+from collections import Counter, OrderedDict
+
+import pandas as pd
 
 import torch
 
@@ -98,9 +101,8 @@ def assert_single_run_config(d, path=""):
         for k, v in d.items():
             assert_single_run_config(v, f"{path}.{k}" if path else k)
     else:
-        assert (not isinstance(d, list),
-            f"Leaf at '{path}' is a list, config is not single-run formatted")
-        
+        assert not isinstance(d, list), f"Leaf at '{path}' is a list, config is not single-run formatted"
+
 
 
 
@@ -115,9 +117,69 @@ def has_internet(host="api.wandb.ai", port=443, timeout=3):
 
 
 
-class MomentGeneratingFunction:
-    def __init__(self, moment_fn):
-        self.moment_fn = moment_fn
 
-    def __call__(self, x):
-        return torch.exp(self.moment_fn(x))
+class Vocab():
+
+    def __init__(self, vocab) -> None:
+        super(Vocab, self).__init__()
+        self.vocab = vocab
+        self.default_index = -1
+
+    def __len__(self) -> int:
+        return len(self.vocab)
+    
+    def __getitem__(self, token: str) -> int:
+        try:
+            return self.vocab[token]
+        except KeyError:
+            return self.default_index
+        
+    def __call__(self, tokens):
+        return self.forward(tokens)
+    
+    def __str__(self):
+        return str(self.vocab)
+
+    def forward(self, list_of_tokens):
+        ret_list = []
+        for char in list_of_tokens:
+            ret_list.append(self[char])
+        
+        return ret_list
+
+    def set_default_index(self, index):
+        self.default_index = index
+
+
+def build_vocab(texts, min_freq=1, specials=[], special_first=True):
+    freqs = Counter()
+
+    for text in texts:
+        freqs.update(text)
+
+    chars = []
+    for token, freq in freqs.items():
+        if freq >= min_freq:
+            chars.append(token)
+    
+    if special_first:
+        chars[0:0] = specials
+    else:
+        chars.extend(specials)
+
+    vocab = {val: i for i, val in enumerate(chars)}
+
+    return Vocab(vocab)
+
+
+if __name__ == '__main__':
+    texts = ["je m'appelle armand", "les caractères rares sont par exemple µ et @"]
+    specials = ["<pad>", "<unk>", "<eos>"]
+    vocab = build_vocab(texts, min_freq=2, specials=specials)
+    vocab.set_default_index(vocab["<unk>"])
+    print("vocab is")
+    print(str(vocab)+'\n')
+    test_sent = "test pour une phrase avec un càrct incônu"
+    print(test_sent+'\n')
+    print(vocab("test pour une phrase avec un càrct incônu"))
+    print()

@@ -11,5 +11,7 @@ models/
 wandb/
 
 # Ignorer les fichiers de données
-listops_data/
-cifar10_data/
+data/listops_data/
+data/cifar10_data/
+data/imdb_data/
+data/

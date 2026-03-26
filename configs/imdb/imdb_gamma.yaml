@@ -1,0 +1,44 @@
+PROJECT: "IMDB_gamma"
+DATASET:
+  NAME: IMDB
+  MAX_LEN: 2048
+  TEST_SIZE: 12500
+  TRAIN_SIZE: 25000
+  VAL_SIZE: 12500
+MODEL:
+  ALPHA_MEAN: [1.] #[1.,1.5,2.]
+  ALPHA_STD: [0.5]
+  THETA_MEAN: [2.]
+  THETA_STD: 0.5
+  ACTIVATION: $torch.nn.GELU
+  BIAS: True
+  INPUT_SIZE: 128
+  N_LAYERS: 4
+  KERNEL_VERSION: gamma
+  BIDIRECTIONAL: False
+  ENCODING: embedding
+  POOLING: last
+  NAME: DSS
+  DROPOUT: 0.
+  NORMALIZATION: batch_norm
+  SEED: [712] #[712,8,93,74,812]
+TRAIN:
+  BATCH_SIZE: 50
+  DISPLAY_EPOCH: True
+  DISPLAY_EVERY: null
+  LOSS_FN: $torch.nn.BCEWithLogitsLoss
+  LOSS_CONFIG: null
+  METRICS: {'accuracy': $torchmetrics.classification.BinaryAccuracy}
+  METRICS_CONFIG: null
+  N_EPOCHS: 40
+  OPTIMIZER: $torch.optim.AdamW
+  OPTIMIZER_CONFIG:
+    lr: [1.e-2]
+    weight_decay: 1.e-2
+  SCHEDULER: $torch.optim.lr_scheduler.StepLR
+  SCHEDULER_CONFIG:
+    gamma: 0.9
+    step_size: 1
+  TORCH_DEVICE: cpu
+  USE_TQDM: False
+  USE_WANDB: False

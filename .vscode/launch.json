@@ -60,25 +60,49 @@
             ]
         },
         {
-            "name": "Debug copytask Exp",
+            "name": "Debug copytask gamma",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
             "console": "integratedTerminal",
             "args": [
-                "--config", "configs/copytask/copy_task_expectation.yaml",
+                "--config", "configs/copytask/copy_task_gamma.yaml",
                 "--save_network",
                 "--use_tqdm"
             ]
         },
         {
-            "name": "Debug Image Exp",
+            "name": "Debug Image gamma",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
             "console": "integratedTerminal",
             "args": [
-                "--config", "configs/seq_cifar10/seq_cifar10_expectation.yaml",
+                "--config", "configs/seq_cifar10/seq_cifar10_gamma.yaml",
+                "--save_network",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Image exponential",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_exponential.yaml",
+                "--save_network",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Text gamma",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/imdb/imdb_gamma.yaml",
                 "--save_network",
                 "--use_tqdm"
             ]
