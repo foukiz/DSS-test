@@ -5,6 +5,7 @@ import socket
 from collections import Counter, OrderedDict
 
 import pandas as pd
+import numpy as np
 
 import torch
 
@@ -115,6 +116,17 @@ def has_internet(host="api.wandb.ai", port=443, timeout=3):
         return False
 
 
+
+
+def pad_sequence(seq, max_len, pad_val=0):
+    if len(seq) >= max_len:
+        return seq[:max_len]
+    if isinstance(seq, list):
+        l = seq + [pad_val] * (max_len - len(seq))
+    else:
+        # l should be an array
+        l = np.concatenate([seq, np.full((max_len - len(seq),), pad_val, dtype=seq.dtype)])
+    return l
 
 
 

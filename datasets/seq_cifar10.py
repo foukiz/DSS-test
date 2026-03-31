@@ -5,7 +5,10 @@ from .dataset import Dataset
 
 
 class sCIFAR10(Dataset):
-    """Class to generate the sequential CIFAR10 dataset with some properties"""
+    """ Class to generate the sequential CIFAR10 dataset with some properties
+        This dataset is used for the 'Image' benchmark in LRA
+    """
+
 
     def __init__(self, **kwargs):
         seq_length = self.image_size * self.channels

@@ -36,6 +36,9 @@ class MappedTensorDataset(TensorDataset):
             return self.transform(data)
 
 class IMDB(Dataset):
+    """ Class to generate the IMDB dataset with some properties
+        This dataset is used for the 'Text' benchmark in LRA
+    """
 
     def __init__(
         self,
@@ -43,22 +46,11 @@ class IMDB(Dataset):
         data_dir=DATA_DIR,
         **kwargs
     ):
-        # vocabulary size
-        train_size = 25000
-        val_size = 12500
-        test_size = 12500
-        if (('train_size' in kwargs.keys()) and ('val_size' in kwargs.keys())
-                and ('test_size' in kwargs.keys())):
-            assert kwargs['train_size'] + kwargs['val_size'] + kwargs['test_size'] == 50000, (
-                    "validation, train and test sets should contain in a whole 50000 examples")
-            #train_size = kwargs['train_size']
-            #val_size = kwargs['val_size']
-            #test_size = kwargs['test_size']
-            train_size = kwargs.pop('train_size')
-            val_size = kwargs.pop('val_size')
-            test_size = kwargs.pop('test_size')
         self.data_dir = data_dir
         self.vocab = None
+        train_size = kwargs.pop('train_size', 25000)
+        val_size = kwargs.pop('val_size', 12500)
+        test_size = kwargs.pop('test_size', 12500)
         super().__init__(train_size, val_size, test_size, seq_length=max_len, **kwargs)
 
     @property
@@ -83,7 +75,7 @@ class IMDB(Dataset):
 
     @property
     def num_outputs(self):
-        return 1
+        return 2
 
     @num_outputs.setter
     def num_outputs(self, value):
@@ -139,27 +131,13 @@ class IMDB(Dataset):
 
 
 
-def load_data():
-    with open(DATA_DIR + '/imdb_data.pkl', 'rb') as f:
-        dic = pkl.load(f)
-    x_train = torch.from_numpy(dic['x_train'].astype(np.float32))
-    x_test = torch.from_numpy(dic['x_test'].astype(np.float32))
-    y_train = torch.from_numpy(dic['y_train'].astype(np.float32))
-    y_test = torch.from_numpy(dic['y_test'].astype(np.float32))
-
-    train_ds = TensorDataset(x_train, y_train)
-    test_ds = TensorDataset(x_test, y_test)
-
-    return train_ds, test_ds
-
-
 def process_raw_csv_data(
-        max_len=2048,
-        min_freq=15,
-        append_bos=False,
-        append_eos=True,
-        data_dir=DATA_DIR
-    ):
+    max_len=2048,
+    min_freq=15,
+    append_bos=False,
+    append_eos=True,
+    data_dir=DATA_DIR
+):
     df = pd.read_csv(data_dir + '/imdb.csv')
     max_len = max_len - int(append_bos) - int(append_eos)
     tokenize = lambda example: list(example)[:max_len]
@@ -176,20 +154,16 @@ def process_raw_csv_data(
         (["<bos>"] if append_bos else []) + example + (["<eos>"] if append_eos else []))
     df['review'] = df['review'].apply(numericalize)
     df['review'] = df['review'].apply(
-        lambda x: pad_sequence(x, max_len=(max_len+int(append_bos)+int(append_eos)), pad_val=vocab['<pad>']))
-    
-    inputs = torch.tensor(df['review'], dtype=torch.int64)
-    targets = torch.tensor(df['sentiment'], dtype=torch.float64)
+        lambda x: utils.pad_sequence(x, max_len=(max_len+int(append_bos)+int(append_eos)), pad_val=vocab['<pad>']))
+
+    inputs = torch.tensor(df['review'], dtype=torch.int32)
+    targets = torch.tensor(df['sentiment'], dtype=torch.int64)
 
     print("preprocessing done.")
 
     return inputs, targets, vocab
 
-def pad_sequence(seq, max_len, pad_val=0):
-    if len(seq) > max_len:
-        return seq[:max_len]
-    l = seq + [pad_val] * (max_len - len(seq))
-    return l
+
 
 def to_pickle(inputs, targets, vocab):
     ds = TensorDataset(inputs, targets)
