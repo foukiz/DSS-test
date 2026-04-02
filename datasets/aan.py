@@ -190,10 +190,17 @@ def process_raw_data(
             itertools.islice(example, max_len),
             ["<eos>"] if append_eos else []
         )
-        return np.fromiter(
-            (vocab[token] for token in tokens),
-            dtype=np.int32
-        )
+        indices = vocab.lookup_indices(tokens)
+        if len(indices) < max_len + int(append_bos) + int(append_eos):
+            indices = utils.pad_sequence(indices, max_len + int(append_bos) + int(append_eos), pad_val=vocab["<pad>"])
+
+        return indices
+
+        #return np.fromiter(
+        #    #(vocab[token] for token in tokens),
+        #    vocab[tokens],
+        #    dtype=np.int32
+        #)
 
     # turn to list and crop to desired max length
     #tokenize = lambda example: list(example)[:max_len]
@@ -212,21 +219,28 @@ def process_raw_data(
     #        (["<bos>"] if append_bos else []), example, (["<eos>"] if append_eos else [])
     #    )
     #    return np.fromiter(
-    #        (vocab[token] for token in tokens), dtype=np.int32
+    #        vocab[tokens], dtype=np.int32
     #    )
-    df['text1'] = df['text1'].apply(numericalize)
-    df['text2'] = df['text2'].apply(numericalize)
+    #df['text1'] = df['text1'].apply(numericalize)
+    #df['text2'] = df['text2'].apply(numericalize)
+    text1 = [numericalize(tokens) for tokens in df['text1']]
+    text1 = np.stack(text1, axis=0)
+    text2 = [numericalize(tokens) for tokens in df['text2']]
+    text2 = np.stack(text2, axis=0)
+    
+    text = np.concatenate([text1, text2], axis=1)
 
     # padd to max length
-    padding = lambda x: utils.pad_sequence(x, max_len=(max_len+int(append_bos)+int(append_eos)), pad_val=vocab['<pad>'])
-    df['text1'] = df['text1'].apply(padding)
-    df['text2'] = df['text2'].apply(padding)
+    #padding = lambda x: utils.pad_sequence(x, max_len=(max_len+int(append_bos)+int(append_eos)), pad_val=vocab['<pad>'])
+    #df['text1'] = df['text1'].apply(padding)
+    #df['text2'] = df['text2'].apply(padding)
 
     # concatenate the two texts next to each other
-    df['text'] = df['text1'] + df['text2']
-    df.drop(columns=['text1', 'text2'], inplace=True)
+    #df['text'] = df['text1'] + df['text2']
+    #df.drop(columns=['text1', 'text2'], inplace=True)
 
-    inputs = torch.tensor(df['text'], dtype=torch.int32)
+    #inputs = torch.tensor(df['text'], dtype=torch.int32)
+    inputs = torch.from_numpy(text)
     targets = torch.tensor(df['label'], dtype=torch.int64)
 
     print("preprocessing done.")
@@ -239,5 +253,7 @@ def process_raw_data(
 
 
 if __name__ == "__main__":
+    #with open(DATA_DIR + "/vocab.pkl", "rb") as f: vocab = pkl.load(f)
+    #process_raw_data(vocab, kind='test_sample')
     AAN()
 

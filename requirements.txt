@@ -1,0 +1,12 @@
+torch==2.2.1+computecanada
+torchvision==0.17.1+computecanada
+
+numpy==1.26.4
+pandas==2.2.2
+matplotlib==3.8.4
+
+opt_einsum==3.3.0
+tqdm==4.66.4
+
+wandb==0.16.6
+kagglehub==0.3.0

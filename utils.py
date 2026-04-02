@@ -141,23 +141,28 @@ class Vocab():
         return len(self.vocab)
     
     def __getitem__(self, token: str) -> int:
-        try:
-            return self.vocab[token]
-        except KeyError:
-            return self.default_index
-        
+        return self.vocab.get(token, self.default_index)
+
     def __call__(self, tokens):
         return self.forward(tokens)
-    
+
     def __str__(self):
         return str(self.vocab)
 
-    def forward(self, list_of_tokens):
+    def forward(self, tokens):
+        """ numericalize a list of tokens, return a list of indices """
         ret_list = []
-        for char in list_of_tokens:
+        for char in tokens:
             ret_list.append(self[char])
-        
+
         return ret_list
+
+    def lookup_indices(self, tokens):
+        """ numericalize a list of tokens, return a numpy array of indices """
+        return np.fromiter(
+            (self.vocab.get(t, self.default_index) for t in tokens),
+            dtype=np.int32
+        )
 
     def set_default_index(self, index):
         self.default_index = index
