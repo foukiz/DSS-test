@@ -2,7 +2,7 @@ import os
 import sys
 
 import torch
-from torch.utils.data import TensorDataset
+from torch.utils.data import TensorDataset, ConcatDataset
 import numpy as np
 import pandas as pd
 import pickle as pkl
@@ -22,6 +22,10 @@ import utils
 
 DATA_DIR = 'data/aan_data'
 
+TRAIN_SIZE = 147085
+VAL_SIZE = 18089
+TEST_SIZE = 17436
+
 
 
 
@@ -39,8 +43,11 @@ class AAN(Dataset):
 
         self.data_dir = data_dir
         self.vocab = None
-        super().__init__(
-            train_size=25000, val_size=12500, test_size=12500, seq_length=max_len, **kwargs)
+        self.seq_length = max_len
+        train_size = kwargs.pop('train_size', TRAIN_SIZE)
+        val_size = kwargs.pop('val_size', VAL_SIZE)
+        test_size = kwargs.pop('test_size', TEST_SIZE)
+        super().__init__(train_size, val_size, test_size, seq_length=max_len, **kwargs)
 
     @property
     def input_dimension(self):
@@ -91,36 +98,41 @@ class AAN(Dataset):
     def get_val_ds(self):
         return self.val_ds
     
+    def make_train_ds(self, train_files):
+        datasets = []
+        for f in train_files:
+            ds = torch.load(f)
+            datasets.append(ds)
+        train_ds = ConcatDataset(datasets)
+        
+        return train_ds
+
     def import_dataset(self):
 
         print("-" * 60 + f"Loading {type(self).__name__}" + "-" * 60)
 
         if os.path.exists(self.data_dir + '/vocab.pkl'):
             with open(self.data_dir + '/vocab.pkl', "rb") as f: self.vocab = pkl.load(f)
-        if not os.path.exists(self.data_dir + '/data.pkl'):
-            if self.vocab is None:
-                self.vocab = make_vocab()
-            x_train, y_train = process_raw_data(self.vocab, max_len=self.seq_length, kind='train')
-            x_val, y_val = process_raw_data(self.vocab, max_len=self.seq_length, kind='val')
-            x_test, y_test = process_raw_data(self.vocab, max_len=self.seq_length, kind='test')
-            data_dic = {
-                'train_ds': (x_train, y_train),
-                'val_ds': (x_val, y_val),
-                'test_ds': (x_test, y_test),
-                'vocab': self.vocab
-            }
-            with open(self.data_dir + "/data.pkl", "wb") as f:
-                pkl.dump(data_dic, f)
-        with open(self.data_dir + '/data.pkl', 'rb') as f:
-            data_dic = pkl.load(f)
-            self.vocab = data_dic['vocab']
+        else:
+            self.vocab = make_vocab()
+        if not os.path.exists(self.data_dir + '/aan_train_0.pt'):
+            process_raw_data(self.vocab, max_len=self.seq_length, kind='train')
+        if not os.path.exists(self.data_dir + '/aan_val.pt'):
+            process_raw_data(self.vocab, max_len=self.seq_length, kind='val')
+        if not os.path.exists(self.data_dir + '/aan_test.pt'):
+            process_raw_data(self.vocab, max_len=self.seq_length, kind='test')
 
         self.input_dimension = len(self.vocab)
         self.padding_idx = self.vocab["<pad>"]
 
-        train_ds = TensorDataset(*data_dic['train_ds'])
-        val_ds = TensorDataset(*data_dic['val_ds'])
-        test_ds = TensorDataset(*data_dic['test_ds'])
+        data_files = os.listdir(self.data_dir)
+        train_files = [f'{self.data_dir}/{f}' for f in data_files if f.startswith('aan_train')]
+
+        train_ds = self.make_train_ds(train_files)
+        val_ds = torch.load(f'{self.data_dir}/aan_val.pt')
+        test_ds = torch.load(f'{self.data_dir}/aan_test.pt')
+        #val_ds = TensorDataset(*torch.load(f'{self.data_dir}/aan_val.pt'))
+        #test_ds = TensorDataset(*torch.load(f'{self.data_dir}/aan_test.pt'))
 
         print("-" * 60 + f"{type(self).__name__} loaded" + "-" * 60)
 
@@ -149,7 +161,6 @@ def make_vocab(append_bos=False, append_eos=True, data_dir=DATA_DIR, save=True):
     print("Building vocab...")
 
     vocab = utils.build_vocab(
-        #df['text1'] + df['text2'],
         text,
         specials=["<pad>", "<unk>"] + (["<bos>"] if append_bos else []) + (["<eos>"] if append_eos else [])
     )
@@ -167,8 +178,14 @@ def process_raw_data(
     append_bos=False,
     append_eos=True,
     kind='train',
-    data_dir=DATA_DIR
+    data_dir=DATA_DIR,
+    file_size=6400,
 ):
+    """ process raw data and save it as tensors in the data directory, with the
+        right format for the AAN dataset. The train set is split into multiple files
+        to avoid memory issues, while the val and test sets are saved in a single file each.
+    """
+    
     print(f"Processing {kind} data...")
     max_len = max_len - int(append_bos) - int(append_eos)
     df = pd.read_csv(
@@ -183,6 +200,7 @@ def process_raw_data(
     decode = lambda x: ast.literal_eval(x).decode("utf-8") 
     df['text1'] = df['text1'].apply(decode)
     df['text2'] = df['text2'].apply(decode)
+    targets = torch.tensor(df['label'], dtype=torch.int64)
 
     def numericalize(example):
         tokens = itertools.chain(
@@ -196,56 +214,34 @@ def process_raw_data(
 
         return indices
 
-        #return np.fromiter(
-        #    #(vocab[token] for token in tokens),
-        #    vocab[tokens],
-        #    dtype=np.int32
-        #)
+    if kind == 'train':
+        num_files = (len(df) + file_size - 1) // file_size
+        for i in range(num_files):
+            start_idx = i * file_size
+            end_idx = min((i + 1) * file_size, len(df))
+            df_chunk = df.iloc[start_idx:end_idx]
 
-    # turn to list and crop to desired max length
-    #tokenize = lambda example: list(example)[:max_len]
-    #df['text1'] = df['text1'].apply(tokenize)
-    #df['text2'] = df['text2'].apply(tokenize)
-#
-    #print("Tokenized.")
+            text1 = [numericalize(tokens) for tokens in df_chunk['text1']]
+            text1 = np.stack(text1, axis=0)
+            text2 = [numericalize(tokens) for tokens in df_chunk['text2']]
+            text2 = np.stack(text2, axis=0)
+            text = torch.from_numpy(np.concatenate([text1, text2], axis=1))
+            labels = targets[start_idx:end_idx]
+            ds = TensorDataset(text, labels)
+            torch.save(ds, f'{data_dir}/aan_{kind}_{i}.pt')
+        print("preprocessing done.")
 
-    # map to numerical indexes and add bos/eos tokens if desired
-    #numericalize = lambda example: vocab(
-    #    (["<bos>"] if append_bos else []) + example + (["<eos>"] if append_eos else [])
-    #)
+    else:
+        text1 = [numericalize(tokens) for tokens in df['text1']]
+        text1 = np.stack(text1, axis=0)
+        text2 = [numericalize(tokens) for tokens in df['text2']]
+        text2 = np.stack(text2, axis=0)
+        text = torch.from_numpy(np.concatenate([text1, text2], axis=1))
+        ds = TensorDataset(text, targets)
+        torch.save(ds, f'{data_dir}/aan_{kind}.pt')
 
-    #def numericalize(example):
-    #    tokens = itertools.chain(
-    #        (["<bos>"] if append_bos else []), example, (["<eos>"] if append_eos else [])
-    #    )
-    #    return np.fromiter(
-    #        vocab[tokens], dtype=np.int32
-    #    )
-    #df['text1'] = df['text1'].apply(numericalize)
-    #df['text2'] = df['text2'].apply(numericalize)
-    text1 = [numericalize(tokens) for tokens in df['text1']]
-    text1 = np.stack(text1, axis=0)
-    text2 = [numericalize(tokens) for tokens in df['text2']]
-    text2 = np.stack(text2, axis=0)
-    
-    text = np.concatenate([text1, text2], axis=1)
+        print("preprocessing done.")
 
-    # padd to max length
-    #padding = lambda x: utils.pad_sequence(x, max_len=(max_len+int(append_bos)+int(append_eos)), pad_val=vocab['<pad>'])
-    #df['text1'] = df['text1'].apply(padding)
-    #df['text2'] = df['text2'].apply(padding)
-
-    # concatenate the two texts next to each other
-    #df['text'] = df['text1'] + df['text2']
-    #df.drop(columns=['text1', 'text2'], inplace=True)
-
-    #inputs = torch.tensor(df['text'], dtype=torch.int32)
-    inputs = torch.from_numpy(text)
-    targets = torch.tensor(df['label'], dtype=torch.int64)
-
-    print("preprocessing done.")
-
-    return inputs, targets
 
 
 
@@ -253,7 +249,5 @@ def process_raw_data(
 
 
 if __name__ == "__main__":
-    #with open(DATA_DIR + "/vocab.pkl", "rb") as f: vocab = pkl.load(f)
-    #process_raw_data(vocab, kind='test_sample')
     AAN()
 

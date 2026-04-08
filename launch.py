@@ -16,7 +16,7 @@ from training import train, evaluate
 from config import Config
 from models import *
 
-from datasets import copy_task, listops, seq_cifar10, imdb, aan
+from datasets import copy_task, listops, seq_cifar10, imdb, aan, pathfinder
 
 
 
@@ -60,7 +60,8 @@ def make_dataset(name, **kwargs):
         'listops': listops.ListOps,
         'scifar10': seq_cifar10.sCIFAR10,
         'imdb': imdb.IMDB,
-        'aan': aan.AAN
+        'aan': aan.AAN,
+        'pathfinder': pathfinder.Pathfinder
     }
     if low_name not in datasets:
         err_str = "{} is not a correct dataset name, accepted datasets are".format(low_name)

@@ -72,7 +72,7 @@ class DSSLayer(nn.Module):
 
         # Compute D term in state space equation - essentially a skip connection
         #y = y + contract('bhl,h->bhl', u, self.D)
-        y = y + u * self.D[None,None,:]  # (B H L)
+        y = y + u * self.D[None,None,:]  # (B L H)
 
         return y
 

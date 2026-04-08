@@ -107,6 +107,18 @@
                 "--save_network",
                 "--use_tqdm"
             ]
+        },
+        {
+            "name": "Debug Retrieval gamma",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/aan/aan_gamma.yaml",
+                "--save_network",
+                "--use_tqdm"
+            ]
         }
     ]
 }

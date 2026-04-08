@@ -1,12 +1,17 @@
+# Core ML
 torch==2.2.1+computecanada
 torchvision==0.17.1+computecanada
+torchmetrics==1.9.0
 
+# Data & computation
 numpy==1.26.4
 pandas==2.2.2
-matplotlib==3.8.4
-
 opt_einsum==3.3.0
 tqdm==4.66.4
 
+# Visualization
+matplotlib==3.8.4
+
+# Experiment tracking & hub
 wandb==0.16.6
 kagglehub==0.3.0

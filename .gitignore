@@ -4,6 +4,7 @@ launch.slurm
 experiments.py
 tests.py
 hist_gamma.png
+generate_pathfinder.py
 
 # Ignorer un dossier entier
 checkpoints/
@@ -11,6 +12,7 @@ logs/
 models/
 wandb/
 graphs/
+images/
 
 # Ignorer les fichiers de données
 data/
