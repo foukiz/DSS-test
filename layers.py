@@ -161,8 +161,8 @@ class Normalization(nn.Module):
 
     def forward(self, x):
         # x shape is (B, L, H)
-        B, L, H = x.shape
-        x = x.view(-1, H)  # (B*L, H)
+        #B, L, H = x.shape
+        x = x.transpose(-1, -2)  # (B, H, L)
         x = self.norm(x)
-        x = x.view(B, L, H)  # (B, L, H)
+        x = x.transpose(-1, -2)  # (B, L, H)
         return x

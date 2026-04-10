@@ -17,16 +17,17 @@ MODEL:
   THETA_STD: 0.5
   ACTIVATION: $torch.nn.GELU 
   BIAS: True
-  INPUT_SIZE: 128
-  N_LAYERS: 6
-  KERNEL_VERSION: uniform
   BIDIRECTIONAL: False
-  ENCODING: embedding
-  POOLING: average
-  NAME: DSS
   DROPOUT: 0.
+  ENCODING: embedding
+  INPUT_SIZE: 128
+  KERNEL_VERSION: uniform
+  POOLING: average
+  N_LAYERS: 6
+  NAME: DSS
   NORMALIZATION: batch_norm
   ORDER_2_APPROX: True
+  PRENORM: False
   SEED: [712,8,93,74,812]
 TRAIN:
   BATCH_SIZE: 50

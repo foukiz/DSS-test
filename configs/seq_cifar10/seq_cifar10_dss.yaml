@@ -15,8 +15,9 @@ MODEL:
   NAME: DSS
   NORMALIZATION: layer_norm
   POOLING: average
+  PRENORM: False
   SEED: [712,8] #[712,8,93,74,812]
-  STATE_SIZE: 2
+  STATE_SIZE: [2,64]
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -27,7 +28,7 @@ TRAIN:
   METRICS_CONFIG:
     task: multiclass
     num_classes: 10
-  N_EPOCHS: 50
+  N_EPOCHS: 200
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
     lr: 4.e-3

@@ -6,6 +6,7 @@ from collections import OrderedDict
 import opt_einsum as oe
 
 from layers import DSSLayer, TopPooling, InputEncoder, Normalization
+import layers
 
 
 
@@ -31,6 +32,8 @@ class DSS(nn.Module):
         normalization='batch_norm',
         n_layers=1,
         encoding=None,
+        prenorm=False,
+        residual=True,
         pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
         seed=None,
         **kwargs
@@ -49,10 +52,13 @@ class DSS(nn.Module):
         self.activation = activation
         self.bias = bias
         self.version = kernel_version
+        self.prenorm = prenorm
+        self.residual = residual
 
         self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
         self.normalization_layer = Normalization(input_size, mode=normalization)
         self.output_layer = nn.Linear(input_size, output_size, bias=bias)
+        self.drop = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
 
         self.dss_blocks = []
 
@@ -74,7 +80,12 @@ class DSS(nn.Module):
     def forward(self, u):
         x = self.input_layer(u)
         for block in self.dss_blocks:
+            if self.residual: y = x
+            if self.prenorm: x = self.normalization_layer(x)
+            # DSS core computation + activation + dropout + linear mixing
             x = block(x)
+            if self.residual: x = self.drop(x) + y
+            if not self.prenorm: x = self.normalization_layer(x)
         x = self.normalization_layer(x)
         x = self.top_pooling(x)
         x = self.output_layer(x)
