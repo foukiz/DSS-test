@@ -1,4 +1,4 @@
-PROJECT: "AAN_gamma"
+PROJECT: "AAN_gamma_no_norm"
 DATASET:
   NAME: AAN
   MAX_LEN: 4000

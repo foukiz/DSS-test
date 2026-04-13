@@ -149,11 +149,13 @@ class Normalization(nn.Module):
         super().__init__()
         self.input_size = input_size
         self.mode = mode if mode is not None else 'none'
+        self.transpose = False
 
         assert mode in ['batch_norm', 'layer_norm', 'none'], "mode must be one of ['batch_norm', 'layer_norm', 'none']"
 
         if mode == 'batch_norm':
             self.norm = nn.BatchNorm1d(input_size)
+            self.transpose = True
         elif mode == 'layer_norm':
             self.norm = nn.LayerNorm(input_size)
         else:
@@ -161,8 +163,7 @@ class Normalization(nn.Module):
 
     def forward(self, x):
         # x shape is (B, L, H)
-        #B, L, H = x.shape
-        x = x.transpose(-1, -2)  # (B, H, L)
+        if self.transpose: x = x.transpose(-1, -2)  # (B, L, H) -> (B, H, L)
         x = self.norm(x)
-        x = x.transpose(-1, -2)  # (B, L, H)
+        if self.transpose: x = x.transpose(-1, -2)  # (B, H, L)-> (B, L, H)
         return x

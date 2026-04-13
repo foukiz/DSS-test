@@ -135,7 +135,7 @@ def evaluate(dataset, batch_size, model, loss_fn, metrics=None, kind='validation
     loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=True
+        shuffle=False
     )
 
     if kind == 'validation': prefix = 'val_'
@@ -144,22 +144,23 @@ def evaluate(dataset, batch_size, model, loss_fn, metrics=None, kind='validation
 
     model.eval()
     running_vloss = 0.
+    n_batches = len(loader)
     if metrics: metric_values = {(prefix+name): 0. for name in metrics.keys()}
 
     # Disable gradient computation and reduce memory consumption.
     with torch.no_grad():
-        for i, vdata in enumerate(loader):
-            vinputs, vlabels = vdata
-            vinputs, vlabels = vinputs.to(torch_device), vlabels.to(torch_device).view(-1)
-            voutputs = model(vinputs).view(-1, model.output_size).squeeze()
+        for i, (vinputs, vlabels) in enumerate(loader):
+            vinputs = vinputs.to(torch_device)
+            vlabels = vlabels.to(torch_device).view(-1)
+            voutputs = model(vinputs).reshape(-1, model.output_size)
             vloss = loss_fn(voutputs, vlabels)
-            running_vloss += vloss
+            running_vloss += vloss.item()
             if metrics:
                 metric_batch = compute_metrics(metrics, voutputs, vlabels, torch_device=torch_device)
                 for k in metric_batch.keys():
                     metric_values[prefix+k] += metric_batch[k]
                 
-    val_loss = running_vloss / (i + 1)
+    val_loss = running_vloss / n_batches
     stat_eval = {prefix+"loss": val_loss.item()}
     if metrics: stat_eval.update({k:(v / (i+1)) for k, v in metric_values.items()})
     return stat_eval

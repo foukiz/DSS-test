@@ -1,4 +1,4 @@
-PROJECT: "listops_gamma"
+PROJECT: "listops_gamma_no_norm"
 DATASET:
   NAME: ListOps
   MIN_LEN: 500
@@ -11,7 +11,7 @@ DATASET:
   GENERATE: False
   PREPROCESSED: True
 MODEL:
-  ALPHA_MEAN: [6.,8.,10.]
+  ALPHA_MEAN: [4.,6.,8.,10.]
   ALPHA_STD: [0.5]
   THETA_MEAN: [4.]
   THETA_STD: 0.5

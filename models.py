@@ -81,11 +81,11 @@ class DSS(nn.Module):
         x = self.input_layer(u)
         for block in self.dss_blocks:
             if self.residual: y = x
-            if self.prenorm: x = self.normalization_layer(x)
+            #if self.prenorm: x = self.normalization_layer(x)
             # DSS core computation + activation + dropout + linear mixing
             x = block(x)
             if self.residual: x = self.drop(x) + y
-            if not self.prenorm: x = self.normalization_layer(x)
+            #if not self.prenorm: x = self.normalization_layer(x)
         x = self.normalization_layer(x)
         x = self.top_pooling(x)
         x = self.output_layer(x)

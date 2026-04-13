@@ -1,4 +1,4 @@
-PROJECT: "IMDB_gamma"
+PROJECT: "IMDB_gamma_no_norm"
 DATASET:
   NAME: IMDB
   MAX_LEN: 2048
