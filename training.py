@@ -152,16 +152,19 @@ def evaluate(dataset, batch_size, model, loss_fn, metrics=None, kind='validation
         for i, (vinputs, vlabels) in enumerate(loader):
             vinputs = vinputs.to(torch_device)
             vlabels = vlabels.to(torch_device).view(-1)
+
             voutputs = model(vinputs).reshape(-1, model.output_size)
+
             vloss = loss_fn(voutputs, vlabels)
             running_vloss += vloss.item()
+
             if metrics:
                 metric_batch = compute_metrics(metrics, voutputs, vlabels, torch_device=torch_device)
                 for k in metric_batch.keys():
                     metric_values[prefix+k] += metric_batch[k]
                 
     val_loss = running_vloss / n_batches
-    stat_eval = {prefix+"loss": val_loss.item()}
+    stat_eval = {prefix+"loss": val_loss}
     if metrics: stat_eval.update({k:(v / (i+1)) for k, v in metric_values.items()})
     return stat_eval
 
