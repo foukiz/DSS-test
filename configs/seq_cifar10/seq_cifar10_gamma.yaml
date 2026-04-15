@@ -1,11 +1,11 @@
-PROJECT: "seq_CIFAR10_gamma_no_norm"
+PROJECT: "seq_CIFAR10_gamma_no_residual"
 DATASET:
   NAME: sCIFAR10
   TRAIN_SIZE: 45000
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU 
-  ALPHA_MEAN: [3.5,5.,7.]
+  ALPHA_MEAN: [3.5,2.]
   ALPHA_STD: [0.5]
   THETA_MEAN: [4.]
   THETA_STD: 0.5
@@ -20,7 +20,7 @@ MODEL:
   NORMALIZATION: layer_norm
   POOLING: average
   PRENORM: False
-  SEED: [712,8,93] #[712,8,93,74,812]
+  SEED: [712,8] #[712,8,93,74,812]
   STATE_SIZE: 64
 TRAIN:
   BATCH_SIZE: 50
@@ -32,7 +32,7 @@ TRAIN:
   METRICS_CONFIG:
     task: multiclass
     num_classes: 10
-  N_EPOCHS: 200
+  N_EPOCHS: 80
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
     lr: [4.e-3]
@@ -42,5 +42,6 @@ TRAIN:
     gamma: 0.95
     step_size: 1
   TORCH_DEVICE: cpu
+  TRACK_NORMS: True
   USE_TQDM: False
   USE_WANDB: False

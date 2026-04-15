@@ -35,6 +35,7 @@ class DSS(nn.Module):
         prenorm=False,
         residual=True,
         pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
+        track_norms=False,
         seed=None,
         **kwargs
     ):
@@ -54,6 +55,7 @@ class DSS(nn.Module):
         self.version = kernel_version
         self.prenorm = prenorm
         self.residual = residual
+        self.track_norms = track_norms
 
         self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
         self.normalization_layer = Normalization(input_size, mode=normalization)
@@ -80,12 +82,12 @@ class DSS(nn.Module):
     def forward(self, u):
         x = self.input_layer(u)
         for block in self.dss_blocks:
-            if self.residual: y = x
-            #if self.prenorm: x = self.normalization_layer(x)
+            #if self.residual: y = x
+            if self.prenorm: x = self.normalization_layer(x)
             # DSS core computation + activation + dropout + linear mixing
             x = block(x)
-            if self.residual: x = self.drop(x) + y
-            #if not self.prenorm: x = self.normalization_layer(x)
+            #if self.residual: x = self.drop(x) + y
+            if not self.prenorm: x = self.normalization_layer(x)
         x = self.normalization_layer(x)
         x = self.top_pooling(x)
         x = self.output_layer(x)
@@ -99,3 +101,16 @@ class DSS(nn.Module):
         ret_str += str(self.top_pooling) + "\n"
         ret_str += str(self.output_layer)
         return ret_str
+
+    def compute_norms(self, L):
+        """ Compute the norms of the first item of the kernels and of the matrics D
+            of each DSS layer, for monitoring purposes
+        """
+        
+        norms = {}
+        with torch.no_grad():
+            for i, block in enumerate(self.dss_blocks):
+                k = block.dss_layer.kernel(L)
+                norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
+                norms['norms/D_{}'.format(i)] = block.dss_layer.D.norm().item() / block.dss_layer.D.numel()
+        return norms

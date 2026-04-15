@@ -15,6 +15,14 @@ except ImportError:
 
 from torch.utils.data import TensorDataset
 
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+import utils
+
+
+
+DATA_DIR = 'data/listops_data'
 
 
 
@@ -292,6 +300,43 @@ class ListOps(Dataset):
 
 
 
+def listops_tokenizer(s):
+    return s.translate({ord("]"): ord("X"), ord("("): None, ord(")"): None}).split()
+
+def process_data(
+    max_len=2000,
+    append_bos=False,
+    append_eos=True,
+    kind='train',
+    data_dir=DATA_DIR
+):
+    print(f"Processing {kind} data...")
+    df = pd.read_csv(data_dir + f'/{kind}.tsv')
+    max_len = max_len - int(append_bos) - int(append_eos)
+    tokenize = lambda example: listops_tokenizer(example)[:max_len]
+    df['Source'] = df['Source'].apply(tokenize)
+    df['Target'] = df['Target'].astype(int)
+    vocab = utils.build_vocab(
+        df['review'],
+        specials=["<pad>", "<unk>"] + (["<bos>"] if append_bos else []) + (["<eos>"] if append_eos else [])
+    )
+    vocab.set_default_index(vocab["<unk>"])
+
+    numericalize = lambda example: vocab(
+        (["<bos>"] if append_bos else []) + example + (["<eos>"] if append_eos else []))
+    df['review'] = df['review'].apply(numericalize)
+    df['review'] = df['review'].apply(
+        lambda x: utils.pad_sequence(x, max_len=(max_len+int(append_bos)+int(append_eos)), pad_val=vocab['<pad>']))
+
+    inputs = torch.tensor(df['review'], dtype=torch.int32)
+    targets = torch.tensor(df['sentiment'], dtype=torch.int64)
+
+    print("preprocessing done.")
+
+    return inputs, targets, vocab
+
+
+
 
 class OneHotBatchDataset(TensorDataset):
 
@@ -409,9 +454,7 @@ def to_value(t):
 
 if __name__ == '__main__':
 
-    ds = ListOps(
-        generate=True,
-        preprocessed=False
-    )
-    ds.preprocess_file2pkl()
-    print()
+    with open(DATA_DIR + "/data.pkl", "rb") as f:
+        data = pkl.load(f)
+    
+    process_data(kind='test')

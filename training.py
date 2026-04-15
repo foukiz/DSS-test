@@ -21,6 +21,7 @@ def train(
         display_every=None,
         display_epoch=False,
         use_wandb=False,
+        track_norms=False,
         torch_device=None,
         use_tqdm=True,
         **kwargs
@@ -93,6 +94,9 @@ def train(
                 wandb_dic.update(stat_val)
             if hasattr(dataset, "naive_baseline"):
                 wandb_dic["CCE baseline"] = dataset.naive_baseline
+            if track_norms:
+                norms = model.compute_norms(L=dataset.seq_length)
+                wandb_dic.update(norms)
             wandb.log(wandb_dic)
 
     return model

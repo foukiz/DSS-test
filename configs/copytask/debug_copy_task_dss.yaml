@@ -1,4 +1,4 @@
-PROJECT: "copytask_DSS"
+PROJECT: "copytask_DSS_test"
 DATASET:
   NAME: CopyMemory
   SENT_LENGTH: 10
@@ -9,13 +9,12 @@ DATASET:
   VOCABULARY: 10
 MODEL:
   ACTIVATION: $torch.nn.GELU
-  ORDER_2_APPROX: True
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: 0.
   ENCODING: embedding
   INPUT_SIZE: 8
-  KERNEL_VERSION: uniform
+  KERNEL_VERSION: gamma
   N_LAYERS: 6
   NAME: DSS
   NORMALIZATION: batch_norm
@@ -39,5 +38,6 @@ TRAIN:
     gamma: 0.8
     step_size: 1
   TORCH_DEVICE: cpu
+  TRACK_NORMS: True
   USE_TQDM: False
-  USE_WANDB: False
+  USE_WANDB: True
