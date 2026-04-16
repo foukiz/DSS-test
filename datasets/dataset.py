@@ -5,10 +5,10 @@ from abc import ABC, abstractmethod
 
 class Dataset(ABC):
     def __init__(self, train_size, val_size, test_size, seq_length, **kwargs):
+        """ This is an abstract data-set class that standardizes the interfaces of datasets within this folder.
+            Like any other abstract classes, you should not need to instantiate this class directly, just its children
         """
-        This is an abstract data-set class that standardizes the interfaces of datasets within this folder.
-        Like any other abstract classes, you should not need to instantiate this class directly, just its children
-        """
+
         self.seq_length = seq_length
         self.tr_size = train_size
         self.va_size = val_size
