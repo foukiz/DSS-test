@@ -67,7 +67,7 @@ class DSSLayer(nn.Module):
         n = L + Lk
         k_f = torch.fft.rfft(k, dim=0, n=n)  # (~n/2 H)
         u_f = torch.fft.rfft(u, dim=1, n=n)  # (B ~n/2 H)
-        y_f = k_f[None,:,:] * u_f
+        y_f = k_f[None,:,:] * u_f            # (B ~n/2 H)
         y = torch.fft.irfft(y_f, dim=1, n=n)[:,:L,:] # (B L H)
 
         # Compute D term in state space equation - essentially a skip connection

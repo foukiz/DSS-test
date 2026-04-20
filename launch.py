@@ -150,6 +150,7 @@ def launch(
     if hasattr(dataset, 'padding_idx'): kwargs.update({'padding_idx': dataset.padding_idx})
     input_dim = dataset.input_flat_dimension
     output_dim = dataset.num_outputs
+    if config['TRAIN']['TRACK_NORMS'] is True: kwargs['track_norms'] = True
     model = make_model(data_dim=input_dim, output_size=output_dim, **cfg.model, **kwargs).to(device)
 
     cfg.instantiate_optimizer(params=model.parameters())

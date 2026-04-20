@@ -1,4 +1,4 @@
-PROJECT: "listops_gamma_no_norm"
+PROJECT: "listops_gamma"
 DATASET:
   NAME: ListOps
   MIN_LEN: 500
@@ -9,9 +9,8 @@ DATASET:
   TRAIN_SIZE: 96000
   VAL_SIZE: 2000
   GENERATE: False
-  PREPROCESSED: True
 MODEL:
-  ALPHA_MEAN: [0.5,1.,2.,8.,10.]
+  ALPHA_MEAN: [0.5,4.]
   ALPHA_STD: [0.5]
   THETA_MEAN: [4.]
   THETA_STD: 0.5
@@ -27,7 +26,7 @@ MODEL:
   KERNEL_VERSION: gamma
   POOLING: average
   PRENORM: False
-  SEED: [712,8,93] #[712,8,93,74,812]
+  SEED: [712,8] #[712,8,93,74,812]
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True

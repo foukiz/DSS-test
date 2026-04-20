@@ -34,7 +34,6 @@ class ListOps(Dataset):
         max_depth=10,
         max_args=10,
         generate=False,
-        preprocessed=True,
         data_dir=DATA_DIR,
         **kwargs
     ):
@@ -44,7 +43,6 @@ class ListOps(Dataset):
         self.max_args = max_args
         self.data_dir = data_dir
         self.generate = generate
-        self.preprocessed = preprocessed
         self.vocab = None
        
         # reset after tests

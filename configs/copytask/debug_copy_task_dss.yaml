@@ -19,6 +19,7 @@ MODEL:
   NAME: DSS
   NORMALIZATION: batch_norm
   POOLING: manytomany
+  PRENORM: True
   SEED: [712] #[712,8,93,74,812]
   STATE_SIZE: 64
 TRAIN:

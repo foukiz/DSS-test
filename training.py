@@ -35,10 +35,11 @@ def train(
 
     validation = hasattr(dataset, "val_ds") and (dataset.val_ds is not None) and (len(dataset.val_ds) > 0)
     train_size = len(dataset.train_ds)
-    n_batches = train_size // batch_size
+    n_batches = train_size // batch_size + (train_size % batch_size != 0)
 
     for epoch in range(n_epochs):
         if not use_tqdm: print("entering epoch {}".format(epoch+1))
+        if track_norms: model.initialize_layer_norms()
 
         # train mode -> gradients computing switched on
         model.train()
@@ -87,6 +88,9 @@ def train(
         if display_epoch:
             display_train_data(epoch_loss=stat_epoch['loss'], **stat_val)
 
+        if track_norms:
+            model.average_layer_norms(n_batches=n_batches)
+
         if use_wandb:
             # TODO mettre une option pour customiser les données qu'on veut envoyer sur wandb
             wandb_dic = stat_epoch.copy()
@@ -96,7 +100,9 @@ def train(
                 wandb_dic["CCE baseline"] = dataset.naive_baseline
             if track_norms:
                 norms = model.compute_norms(L=dataset.seq_length)
+                layer_norms = {'layer_norm/'+k: v for k, v in model.layer_norms.items()}
                 wandb_dic.update(norms)
+                wandb_dic.update(layer_norms)
             wandb.log(wandb_dic)
 
     return model

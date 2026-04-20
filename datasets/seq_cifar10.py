@@ -68,16 +68,16 @@ class sCIFAR10(Dataset):
         return self.val_ds
 
     def import_dataset(self):
-        torch.manual_seed(0)
+        torch.manual_seed(42)
 
         # this transform allows to download the cifar10 images in the flattened shape
         transform = transforms.Compose([
             transforms.Grayscale(num_output_channels=1),
             transforms.ToTensor(),
-            transforms.Normalize(mean=122.6 / 255.0, std=61.0 / 255.0),
-            transforms.Lambda(lambda x: x.view(-1, 1))
+            transforms.Normalize(mean=122.6/255.0, std=61.0/255.0),
+            transforms.Lambda(lambda x: x.view(1, 1024).t())
         ])
-        
+
         print("-" * 43 + f" Loading {type(self).__name__} " + "-" * 43)
 
         train_ds, val_ds = torch.utils.data.random_split(
