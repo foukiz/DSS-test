@@ -5,8 +5,7 @@ from collections import OrderedDict
 
 import opt_einsum as oe
 
-from layers import DSSLayer, TopPooling, InputEncoder, Normalization
-import layers
+from layers import DSSLayer, S4Layer, TopPooling, InputEncoder, Normalization
 
 
 
@@ -23,7 +22,7 @@ class DSS(nn.Module):
         input_size,
         output_size,
         data_dim,
-        state_size=64,
+        state_size=DEFAULT_STATE_SIZE,
         bidirectional=False,
         activation='gelu',
         kernel_version='exp',
@@ -58,7 +57,7 @@ class DSS(nn.Module):
         self.track_norms = track_norms
         if self.track_norms:
             self.layer_norms = {'layer_norm_{}'.format(i): 0. for i in range(n_layers)}
-            self.layer_norms.update({'input_layer_norm': 0., 'pooling_layer_norm': 0.})
+            self.layer_norms.update({'input_layer_norm': 0., 'pooling_layer_norm': 0., 'output_norm': 0.})
 
         self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
         self.normalization_layer = Normalization(input_size, mode=normalization)
@@ -73,7 +72,8 @@ class DSS(nn.Module):
             dss_block = nn.Sequential(OrderedDict([
                 ('dss_layer', DSSLayer(input_size=input_size, state_size=state_size, version=self.version, bidirectional=bidirectional, bias=bias, **kwargs)),
                 ('activation', self.activation),
-                ('dropout', nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()),
+                #('dropout', nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()),
+                ('dropout', self.drop),
                 ('linear', nn.Linear(input_size, input_size, bias=bias))
             ]))
             setattr(self, f'dss_block_{i}', dss_block)
@@ -142,3 +142,88 @@ class DSS(nn.Module):
     def initialize_layer_norms(self):
         for k in self.layer_norms.keys():
             self.layer_norms[k] = 0.
+
+
+
+
+
+class S4(DSS):
+
+    def __init__(
+        self,
+        input_size,
+        output_size,
+        data_dim,
+        state_size=DEFAULT_STATE_SIZE,
+        kernel_length=None,
+        bidirectional=False,
+        activation='gelu',
+        bias=True,
+        dropout=0.0,
+        normalization='batch_norm',
+        n_layers=1,
+        encoding=None,
+        prenorm=False,
+        residual=True,
+        pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
+        track_norms=False,
+        seed=None,
+        **kwargs
+    ):
+        super().__init__(
+            input_size=input_size,
+            output_size=output_size,
+            data_dim=data_dim,
+            state_size=state_size,
+            bidirectional=bidirectional,
+            activation=activation,
+            kernel_version='exp',
+            bias=bias,
+            dropout=dropout,
+            normalization=normalization,
+            n_layers=n_layers,
+            encoding=encoding,
+            prenorm=prenorm,
+            residual=residual,
+            pooling=pooling,     # top pooling mode - 'last' or 'average' or 'manytomany'
+            track_norms=track_norms,
+            seed=seed,
+            **kwargs
+        )
+        
+        self.dss_blocks = []
+
+        for i in range(n_layers):
+            # stacker n_layers blocs DSS:
+            # DSSLayer (core) + activation + dropout + linear (mixing layer)
+            dss_block = nn.Sequential(OrderedDict([
+                ('s4_layer', S4Layer(input_size=input_size, state_size=state_size, bidirectional=bidirectional, bias=bias, **kwargs)),
+                ('activation', self.activation),
+                #('dropout', nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()),
+                ('dropout', self.drop),
+                ('linear', nn.Linear(input_size, input_size, bias=bias))
+            ]))
+            setattr(self, f's4_block_{i}', dss_block)
+            self.dss_blocks.append(dss_block)
+    
+    def __str__(self):
+        ret_str = str(self.input_layer) + "\n"
+        ret_str += str(self.s4_block_0) + "\n"
+        ret_str += "X {}".format(len(self.dss_blocks)) + "\n"
+        ret_str += str(self.normalization_layer) + "\n"
+        ret_str += str(self.top_pooling) + "\n"
+        ret_str += str(self.output_layer)
+        return ret_str
+
+    def compute_norms(self, L):
+        """ Compute the norms of the first item of the kernels and of the matrics D
+            of each DSS layer, for monitoring purposes
+        """
+        
+        norms = {}
+        with torch.no_grad():
+            for i, block in enumerate(self.dss_blocks):
+                k = block.s4_layer.kernel(L)
+                norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
+                norms['norms/D_{}'.format(i)] = block.s4_layer.D.norm().item() / block.s4_layer.D.numel()
+        return norms

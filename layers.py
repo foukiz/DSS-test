@@ -3,7 +3,7 @@ import torch.nn as nn
 
 import opt_einsum as oe
 
-from kernel import DSSKernel, GammaExpectationKernel, UniformExpectationKernel, ExponentialExpectationKernel
+from kernels import DSSKernel, GammaExpectationKernel, UniformExpectationKernel, ExponentialExpectationKernel, HippoSSKernel
 
 
 
@@ -59,8 +59,8 @@ class DSSLayer(nn.Module):
 
         # Compute SS Kernel
         Lk = L if not self.max_kernel_length else min(self.max_kernel_length, L)
-        k = self.kernel(L=Lk)  # (Lk H) (Lk B H)
-        
+        k = self.kernel(L=Lk)  # (Lk H)
+
         # y = multiply_polynomials(u.unsqueeze(1), k.unsqueeze(0))[..., :L]  # (B 1 H L), (1 H Lk) -> (B H L)
         # fft has to be performed along the seuquence length dimension ;
         # hence the arguments dim=0 and dim=1 respectively in k_f and u_f
@@ -84,6 +84,39 @@ class DSSLayer(nn.Module):
     def d_output(self):
         return self.h
     
+
+
+class S4Layer(DSSLayer):
+
+    def __init__(
+            self,
+            input_size,
+            state_size=64,
+            bias=True,
+            bidirectional=False,
+            #l_max=1, # Maximum length of sequence. Fine if not provided: the kernel will keep doubling in length until longer than sequence. However, this can be marginally slower if the true length is not a power of 2
+            #activation='gelu', # activation in between SS and FF
+            #initializer=None, # initializer on FF
+            #weight_norm=False, # weight normalization on FF
+            **kwargs,
+        ):
+        """ Implémentation de S4, basée sur celle de DSS: les calculs et les arguments sont
+            essentiellement les mêmes, mis à part pour l
+        """
+
+        super().__init__(
+            input_size,
+            state_size,
+            bias=bias,
+            version='exp',
+            bidirectional=bidirectional,
+            **kwargs
+        )
+
+        # SSM Kernel
+        self.kernel = HippoSSKernel(self.h, N=self.n, L=None, **kwargs)
+
+
 
 
 
@@ -167,3 +200,18 @@ class Normalization(nn.Module):
         x = self.norm(x)
         if self.transpose: x = x.transpose(-1, -2)  # (B, H, L)-> (B, L, H)
         return x
+    
+
+
+
+
+
+if __name__ == "__main__":
+    h = 4
+    N = 8
+    L = 16
+    B = 5
+    C = 2
+    layer = S4Layer(input_size=h, state_size=N, l_max=None)
+    u = torch.randn(B, L, h)
+    layer(u)

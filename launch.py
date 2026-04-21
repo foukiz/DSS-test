@@ -14,9 +14,9 @@ import yaml
 
 from training import train, evaluate
 from config import Config
-from models import *
+from models import DSS, S4
 
-from datasets import copy_task, listops, seq_cifar10, imdb, aan, pathfinder
+from datasets import copy_task, listops, seq_cifar10, imdb, aan, pathfinder, smnist, pmnist
 
 
 
@@ -40,13 +40,13 @@ ARGS = vars(parse_args())
 
 def make_model(name, **kwargs):
     low_name = name.lower()
-    models = {'dss': DSS}
+    models = {'dss': DSS, 's4': S4}
     if low_name not in models:
         err_str = "{} is not a correct model name, accepted models are".format(low_name)
         for i, k in enumerate(models.keys()):
             if i == len(models) - 1 and i > 0: err_str += " and {}".format(k)
             else: err_str += " {},".format(k)
-        err_str += " (case doeslow_ not matter)"
+        err_str += " (case does not matter)"
         raise KeyError(err_str)
 
     model = models[low_name]
@@ -61,7 +61,9 @@ def make_dataset(name, **kwargs):
         'scifar10': seq_cifar10.sCIFAR10,
         'imdb': imdb.IMDB,
         'aan': aan.AAN,
-        'pathfinder': pathfinder.Pathfinder
+        'pathfinder': pathfinder.Pathfinder,
+        'smnist': smnist.sMNIST,
+        'pmnist': pmnist.pMNIST
     }
     if low_name not in datasets:
         err_str = "{} is not a correct dataset name, accepted datasets are".format(low_name)
@@ -100,14 +102,14 @@ def save_model(model, dataset, save_name, stat_dict=None, **kwargs):
 
 
 def launch(
-        config=None,
-        use_wandb=False,
-        use_tqdm=True,
-        device='cpu',
-        save_network=False,
-        save_name=None,
-        **kwargs
-    ):
+    config=None,
+    use_wandb=False,
+    use_tqdm=True,
+    device='cpu',
+    save_network=False,
+    save_name=None,
+    **kwargs
+):
     """ Launch a single experiment, including setting up the model and the dataset,
         and training the model on the dataset, with evaluation and testing.
     """

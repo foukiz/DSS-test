@@ -46,7 +46,7 @@
             ]
         },
         {
-            "name": "Test micro copy task",
+            "name": "Test micro copy task DSS",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
@@ -57,13 +57,13 @@
             ]
         },
         {
-            "name": "Debug copytask gamma",
+            "name": "Test micro copy task S4",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
             "console": "integratedTerminal",
             "args": [
-                "--config", "configs/copytask/copy_task_gamma.yaml",
+                "--config", "configs/copytask/debug_copy_task_S4.yaml",
                 "--use_tqdm"
             ]
         },

@@ -6,6 +6,10 @@ from collections import Counter, OrderedDict
 
 import pandas as pd
 import numpy as np
+from scipy import special as ss
+
+import opt_einsum as oe
+from einops import rearrange
 
 import torch
 
@@ -189,14 +193,276 @@ def build_vocab(texts, min_freq=1, specials=[], special_first=True):
     return Vocab(vocab)
 
 
-if __name__ == '__main__':
-    texts = ["je m'appelle armand", "les caractères rares sont par exemple µ et @"]
-    specials = ["<pad>", "<unk>", "<eos>"]
-    vocab = build_vocab(texts, min_freq=2, specials=specials)
-    vocab.set_default_index(vocab["<unk>"])
-    print("vocab is")
-    print(str(vocab)+'\n')
-    test_sent = "test pour une phrase avec un càrct incônu"
-    print(test_sent+'\n')
-    print(vocab("test pour une phrase avec un càrct incônu"))
-    print()
+
+
+
+
+
+
+""" Cauchy kernel """
+
+
+#try: # Try CUDA extension
+#    from extensions.cauchy.cauchy import cauchy_mult
+#    has_cauchy_extension = True
+#except:
+#    log.warn(
+#        "CUDA extension for cauchy multiplication not found. Install by going to extensions/cauchy/ and running `python setup.py install`. This should speed up end-to-end training by 10-50%"
+#    )
+#    has_cauchy_extension = False
+_c2r = torch.view_as_real
+_r2c = torch.view_as_complex
+
+
+
+# version avec pykeops:
+
+#try: # Try pykeops
+#import pykeops
+#from pykeops.torch import Genred
+#has_pykeops = True
+#def cauchy_conj(v, z, w):
+#    """ Pykeops version """
+#    expr_num = 'z * ComplexReal(v) - Real2Complex(Sum(v * w))'
+#    expr_denom = 'ComplexMult(z-w, z-Conj(w))'
+#
+#    cauchy_mult = Genred(
+#        f'ComplexDivide({expr_num}, {expr_denom})',
+#        # expr_num,
+#        # expr_denom,
+#        [
+#            'v = Vj(2)',
+#            'z = Vi(2)',
+#            'w = Vj(2)',
+#        ],
+#        reduction_op='Sum',
+#        axis=1,
+#        dtype='float32' if v.dtype == torch.cfloat else 'float64',
+#    )
+#
+#    v, z, w = _broadcast_dims(v, z, w)
+#    v = _c2r(v)
+#    z = _c2r(z)
+#    w = _c2r(w)
+#
+#    #r = 2*cauchy_mult(v, z, w, backend='GPU')
+#    r = 2*cauchy_mult(v, z, w)
+#    return _r2c(r)
+
+#def _broadcast_dims(*tensors):
+#    max_dim = max([len(tensor.shape) for tensor in tensors])
+#    tensors = [tensor.view((1,)*(max_dim-len(tensor.shape))+tensor.shape) for tensor in tensors]
+#    return tensors
+
+
+#def cauchy_conj(v, z, w):
+#    v = _c2r(v)
+#    z = _c2r(z)
+#    w = _c2r(w)
+#
+#    z_i = z[:, None, :]
+#    w_j = w[None, :, :]
+#    v_j = v[None, :, :]
+#
+#    diff = z_i - w_j
+#    denom = diff * diff.conj()
+#
+#    numer = z_i * v_j - (v * w).sum(dim=0, keepdim=True)[None, :, :]
+#
+#    r = (numer / denom).sum(dim=1)
+#
+#    return _r2c(2 * r)
+
+
+def cauchy_conj(v, z, w):
+    z = z.unsqueeze(-1)
+    v = v.unsqueeze(-2)
+    w = w.unsqueeze(-2)
+    r = (z*v.real - (v*w.conj()).real) / ((z-w.real)**2 + w.imag**2)
+    # r =  ((z-w.real)**2 + w.imag**2)
+    return 2 * torch.sum(r, dim=-1)
+
+
+
+
+
+""" S4 HiPPO kernel utilities """
+
+def power(L, A, v=None):
+    """ Compute A^L and the scan sum_i A^i v_i
+
+    A: (..., N, N)
+    v: (..., N, L)
+    """
+
+    I = torch.eye(A.shape[-1]).to(A) # , dtype=A.dtype, device=A.device)
+
+    powers = [A]
+    l = 1
+    while True:
+        if L % 2 == 1: I = powers[-1] @ I
+        L //= 2
+        if L == 0: break
+        l *= 2
+        powers.append(powers[-1] @ powers[-1])
+
+    if v is None: return I
+
+    k = v.size(-1) - l
+    v_ = powers.pop() @ v[..., l:]
+    v = v[..., :l]
+    v[..., :k] = v[..., :k] + v_
+
+    # Handle reduction for power of 2
+    while v.size(-1) > 1:
+        v = rearrange(v, '... (z l) -> ... z l', z=2)
+        v = v[..., 0, :] + powers.pop() @ v[..., 1, :]
+    return I, v.squeeze(-1)
+
+def embed_c2r(A):
+    #A = rearrange(A, '... m n -> ... m () n ()')
+    A = A[..., :, None, :, None]
+    A = np.pad(A, ((0, 0), (0, 1), (0, 0), (0, 1))) + \
+        np.pad(A, ((0, 0), (1, 0), (0, 0), (1,0)))
+    A = A.reshape(A.shape[0] * A.shape[1], A.shape[2] * A.shape[3])
+    #return rearrange(A, 'm x n y -> (m x) (n y)')
+    return A
+
+def transition(measure, N, **measure_args):
+    """ A, B transition matrices for different measures
+
+    measure: the type of measure
+      legt - Legendre (translated)
+      legs - Legendre (scaled)
+      glagt - generalized Laguerre (translated)
+      lagt, tlagt - previous versions of (tilted) Laguerre with slightly different normalization
+    """
+    # Laguerre (translated)
+    if measure == 'lagt':
+        b = measure_args.get('beta', 1.0)
+        A = np.eye(N) / 2 - np.tril(np.ones((N, N)))
+        B = b * np.ones((N, 1))
+    # Generalized Laguerre
+    # alpha 0, beta small is most stable (limits to the 'lagt' measure)
+    # alpha 0, beta 1 has transition matrix A = [lower triangular 1]
+    elif measure == 'glagt':
+        alpha = measure_args.get('alpha', 0.0)
+        beta = measure_args.get('beta', 0.01)
+        A = -np.eye(N) * (1 + beta) / 2 - np.tril(np.ones((N, N)), -1)
+        B = ss.binom(alpha + np.arange(N), np.arange(N))[:, None]
+
+        L = np.exp(.5 * (ss.gammaln(np.arange(N)+alpha+1) - ss.gammaln(np.arange(N)+1)))
+        A = (1./L[:, None]) * A * L[None, :]
+        B = (1./L[:, None]) * B * np.exp(-.5 * ss.gammaln(1-alpha)) * beta**((1-alpha)/2)
+    # Legendre (translated)
+    elif measure == 'legt':
+        Q = np.arange(N, dtype=np.float64)
+        R = (2*Q + 1) ** .5
+        j, i = np.meshgrid(Q, Q)
+        A = R[:, None] * np.where(i < j, (-1.)**(i-j), 1) * R[None, :]
+        B = R[:, None]
+        A = -A
+    # Legendre (scaled)
+    elif measure == 'legs':
+        q = np.arange(N, dtype=np.float64)
+        col, row = np.meshgrid(q, q)
+        r = 2 * q + 1
+        M = -(np.where(row >= col, r, 0) - np.diag(q))
+        T = np.sqrt(np.diag(2 * q + 1))
+        A = T @ M @ np.linalg.inv(T)
+        B = np.diag(T)[:, None]
+        B = B.copy() # Otherwise "UserWarning: given NumPY array is not writeable..." after torch.as_tensor(B)
+    elif measure == 'fourier':
+        freqs = np.arange(N//2)
+        d = np.stack([freqs, np.zeros(N//2)], axis=-1).reshape(-1)[:-1]
+        A = 2*np.pi*(np.diag(d, 1) - np.diag(d, -1))
+        A = A - embed_c2r(np.ones((N//2, N//2)))
+        B = embed_c2r(np.ones((N//2, 1)))[..., :1]
+    elif measure == 'random':
+        A = np.random.randn(N, N) / N
+        B = np.random.randn(N, 1)
+    elif measure == 'diagonal':
+        A = -np.diag(np.exp(np.random.randn(N)))
+        B = np.random.randn(N, 1)
+    else:
+        raise NotImplementedError
+
+    return A, B
+
+def rank_correction(measure, N, rank=1, dtype=torch.float):
+    """ Return low-rank matrix L such that A + L is normal """
+
+    if measure == 'legs':
+        assert rank >= 1
+        P = torch.sqrt(.5+torch.arange(N, dtype=dtype)).unsqueeze(0) # (1 N)
+    elif measure == 'legt':
+        assert rank >= 2
+        P = torch.sqrt(1+2*torch.arange(N, dtype=dtype)) # (N)
+        P0 = P.clone()
+        P0[0::2] = 0.
+        P1 = P.clone()
+        P1[1::2] = 0.
+        P = torch.stack([P0, P1], dim=0) # (2 N)
+    elif measure == 'lagt':
+        assert rank >= 1
+        P = .5**.5 * torch.ones(1, N, dtype=dtype)
+    elif measure == 'fourier':
+        P = torch.ones(N, dtype=dtype) # (N)
+        P0 = P.clone()
+        P0[0::2] = 0.
+        P1 = P.clone()
+        P1[1::2] = 0.
+        P = torch.stack([P0, P1], dim=0) # (2 N)
+    else: raise NotImplementedError
+
+    d = P.size(0)
+    if rank > d:
+        P = torch.cat([P, torch.zeros(rank-d, N, dtype=dtype)], dim=0) # (rank N)
+    return P
+
+def nplr(measure, N, rank=1, dtype=torch.float):
+    """ Return w, p, q, V, B such that
+    (w - p q^*, B) is unitarily equivalent to the original HiPPO A, B by the matrix V
+    i.e. A = V[w - p q^*]V^*, B = V B
+    """
+    assert dtype == torch.float or torch.cfloat
+    if measure == 'random':
+        dtype = torch.cfloat if dtype == torch.float else torch.cdouble
+        # w = torch.randn(N//2, dtype=dtype)
+        w = -torch.exp(torch.randn(N//2)) + 1j*torch.randn(N//2)
+        P = torch.randn(rank, N//2, dtype=dtype)
+        B = torch.randn(N//2, dtype=dtype)
+        V = torch.eye(N, dtype=dtype)[..., :N//2] # Only used in testing
+        return w, P, B, V
+
+    A, B = transition(measure, N)
+    A = torch.as_tensor(A, dtype=dtype) # (N, N)
+    B = torch.as_tensor(B, dtype=dtype)[:, 0] # (N,)
+
+    P = rank_correction(measure, N, rank=rank, dtype=dtype)
+    AP = A + torch.sum(P.unsqueeze(-2)*P.unsqueeze(-1), dim=-3)
+    w, V = torch.linalg.eig(AP) # (..., N) (..., N, N)
+    # V w V^{-1} = A
+
+    # Only keep one of the conjugate pairs
+    w = w[..., 0::2].contiguous()
+    V = V[..., 0::2].contiguous()
+
+    V_inv = V.conj().transpose(-1, -2)
+
+    B = oe.contract('ij, j -> i', V_inv, B.to(V)) # V^* B
+    P = oe.contract('ij, ...j -> ...i', V_inv, P.to(V)) # V^* P
+
+
+    return w, P, B, V
+
+
+
+def main():
+    v = _r2c(torch.randn(10,2))
+    z = _r2c(torch.randn(10,2))
+    w = _r2c(torch.randn(10,2))
+    cauchy_conj(v,z,w)
+
+if __name__ == "__main__":
+    main()

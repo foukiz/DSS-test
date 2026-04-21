@@ -114,6 +114,8 @@ def training_step(batch_x, batch_y, model, optimizer, loss_fn, metrics, torch_de
     predictions = model(batch_x).view(-1, model.output_size).squeeze()
     loss = loss_fn(predictions, batch_y)
 
+
+
     # update weights
     optimizer.zero_grad()
     loss.backward()
