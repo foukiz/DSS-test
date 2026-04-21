@@ -72,7 +72,7 @@ class sCIFAR10(Dataset):
 
         # this transform allows to download the cifar10 images in the flattened shape
         transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=1),
+            transforms.Grayscale(),
             transforms.ToTensor(),
             transforms.Normalize(mean=122.6/255.0, std=61.0/255.0),
             transforms.Lambda(lambda x: x.view(1, 1024).t())

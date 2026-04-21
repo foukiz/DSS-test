@@ -1,0 +1,41 @@
+PROJECT: "PTB_S4"
+DATASET:
+  NAME: PennTreebank
+  SEQ_LENGTH: 150
+  TEST_SIZE: 3761
+  TRAIN_SIZE: 42068
+  VAL_SIZE: 3370
+MODEL:
+  ACTIVATION: $torch.nn.GELU
+  BIAS: True
+  BIDIRECTIONAL: False
+  DROPOUT: 0.
+  ENCODING: embedding
+  INPUT_SIZE: [512,1024]
+  N_LAYERS: 6
+  NAME: S4
+  NORMALIZATION: batch_norm
+  POOLING: manytomany
+  PRENORM: True
+  SEED: [8,93] #[712,8,93,74,812]
+  STATE_SIZE: 64
+TRAIN:
+  BATCH_SIZE: 50
+  DISPLAY_EPOCH: True
+  DISPLAY_EVERY: null
+  LOSS_FN: $torch.nn.CrossEntropyLoss
+  LOSS_CONFIG: null
+  METRICS: {'BPC': $torchmetrics.BPC}
+  N_EPOCHS: 100
+  OPTIMIZER: $torch.optim.AdamW
+  OPTIMIZER_CONFIG:
+    lr: [1.e-2,1.e-3]
+    weight_decay: 1.e-2
+  SCHEDULER: $torch.optim.lr_scheduler.StepLR
+  SCHEDULER_CONFIG:
+    gamma: 1.
+    step_size: 1
+  TORCH_DEVICE: cpu
+  TRACK_NORMS: True
+  USE_TQDM: False
+  USE_WANDB: True
