@@ -139,7 +139,7 @@ def launch(
                 config=cfg.config,
             )
         
-    if ARGS['device'] == 'cuda':
+    if ARGS['device'] == 'cuda' or cfg.train['torch_device'].startswith('cuda'):
         if torch.cuda.is_available():
             device = 'cuda'
             cfg.train['torch_device'] = device

@@ -4,7 +4,7 @@ DATASET:
   TRAIN_SIZE: 50000
   VAL_SIZE: 10000
 MODEL:
-  ACTIVATION: $torch.nn.GeLU
+  ACTIVATION: $torch.nn.GELU
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: 0.
@@ -12,14 +12,14 @@ MODEL:
   INPUT_SIZE: 256
   N_LAYERS: 6
   NAME: S4
-  NORMALIZATION: layer_norm
+  NORMALIZATION: [layer_norm, batch_norm]
   POOLING: average
   PRENORM: False
-  SEED: [712,8,93,74,812]
+  SEED: [712,8,93] #[712,8,93,74,812]
   STATE_SIZE: 64
 TRAIN:
   BATCH_SIZE: 50
-  DISPLAY_EPOCH: false
+  DISPLAY_EPOCH: True
   DISPLAY_EVERY: null
   LOSS_FN: $torch.nn.CrossEntropyLoss
   LOSS_CONFIG: null
@@ -36,7 +36,7 @@ TRAIN:
   SCHEDULER_CONFIG:
     gamma: 1.
     step_size: 1
-  TORCH_DEVICE: cuda:0
+  TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False
   USE_WANDB: False

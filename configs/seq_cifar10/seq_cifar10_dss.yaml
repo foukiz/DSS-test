@@ -35,7 +35,7 @@ TRAIN:
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    patience: 5
+    patience: 10
   TORCH_DEVICE: cuda:0
   TRACK_NORMS: True
   USE_TQDM: False

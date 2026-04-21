@@ -121,6 +121,17 @@
                 "--config", "configs/aan/aan_gamma.yaml",
                 "--use_tqdm"
             ]
+        },
+        {
+            "name": "Debug pMNIST S4",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/pmnist/pmnist_S4.yaml",
+                "--use_tqdm"
+            ]
         }
     ]
 }
