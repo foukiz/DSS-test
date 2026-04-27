@@ -14,9 +14,9 @@ import yaml
 
 from training import train, evaluate
 from config import Config
-from models import DSS, S4
+from models import DSS, S4, Transformer
 
-from datasets import copy_task, listops, seq_cifar10, imdb, aan, pathfinder, smnist, pmnist
+from datasets import copy_task, listops, seq_cifar10, imdb, aan, pathfinder, smnist, pmnist, ptb
 
 
 
@@ -40,7 +40,7 @@ ARGS = vars(parse_args())
 
 def make_model(name, **kwargs):
     low_name = name.lower()
-    models = {'dss': DSS, 's4': S4}
+    models = {'dss': DSS, 's4': S4, 'transformer': Transformer}
     if low_name not in models:
         err_str = "{} is not a correct model name, accepted models are".format(low_name)
         for i, k in enumerate(models.keys()):
@@ -63,7 +63,8 @@ def make_dataset(name, **kwargs):
         'aan': aan.AAN,
         'pathfinder': pathfinder.Pathfinder,
         'smnist': smnist.sMNIST,
-        'pmnist': pmnist.pMNIST
+        'pmnist': pmnist.pMNIST,
+        'ptb': ptb.PennTreebank
     }
     if low_name not in datasets:
         err_str = "{} is not a correct dataset name, accepted datasets are".format(low_name)
@@ -149,11 +150,19 @@ def launch(
 
     kwargs = {}
     dataset = make_dataset(**cfg.dataset)
-    if hasattr(dataset, 'padding_idx'): kwargs.update({'padding_idx': dataset.padding_idx})
+    if hasattr(dataset, 'padding_idx'):
+        kwargs.update({'padding_idx': dataset.padding_idx})
+        if 'crossentropyloss' in config['TRAIN']['LOSS_FN'].lower():
+            cfg.train['loss_fn'] = torch.nn.CrossEntropyLoss(ignore_index=dataset.padding_idx)
     input_dim = dataset.input_flat_dimension
     output_dim = dataset.num_outputs
-    if config['TRAIN']['TRACK_NORMS'] is True: kwargs['track_norms'] = True
+    try:
+        if config['TRAIN']['TRACK_NORMS'] is True: kwargs['track_norms'] = True
+    except KeyError:
+        pass
     model = make_model(data_dim=input_dim, output_size=output_dim, **cfg.model, **kwargs).to(device)
+
+    print(f'\n{model}\n')
 
     cfg.instantiate_optimizer(params=model.parameters())
     cfg.instantiate_scheduler()
@@ -167,9 +176,9 @@ def launch(
 
     if dataset.test_ds:
         test_batch_size = cfg.train['batch_size']
+        loader = torch.utils.data.DataLoader(dataset.test_ds, test_batch_size, shuffle=False)
         stat_test = evaluate(
-            dataset.test_ds,
-            test_batch_size,
+            loader,
             model,
             loss_fn=cfg.train['loss_fn'],
             metrics=cfg.train['metrics'],

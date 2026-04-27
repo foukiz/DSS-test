@@ -34,6 +34,13 @@ def train(
     )
 
     validation = hasattr(dataset, "val_ds") and (dataset.val_ds is not None) and (len(dataset.val_ds) > 0)
+    if validation:
+        val_loader = torch.utils.data.DataLoader(
+            dataset.val_ds,
+            batch_size=batch_size,
+            shuffle=False
+        )
+
     train_size = len(dataset.train_ds)
     n_batches = train_size // batch_size + (train_size % batch_size != 0)
 
@@ -75,8 +82,7 @@ def train(
                 display_train_data(loss=stat_batch['loss'], batch_idx=batch_idx, n_batches=n_batches, epoch=epoch)
 
         if validation:
-            val_batch_size = batch_size
-            stat_val = evaluate(dataset.val_ds, val_batch_size, model, loss_fn, metrics=metrics, kind='validation', torch_device=torch_device)
+            stat_val = evaluate(val_loader, model, loss_fn, metrics=metrics, kind='validation', torch_device=torch_device)
 
         if scheduler is not None:
             if scheduler.__class__.__name__ == 'ReduceLROnPlateau':
@@ -114,8 +120,6 @@ def training_step(batch_x, batch_y, model, optimizer, loss_fn, metrics, torch_de
     predictions = model(batch_x).view(-1, model.output_size).squeeze()
     loss = loss_fn(predictions, batch_y)
 
-
-
     # update weights
     optimizer.zero_grad()
     loss.backward()
@@ -135,20 +139,21 @@ def training_step(batch_x, batch_y, model, optimizer, loss_fn, metrics, torch_de
 def batch_update(stat_epoch, stat_batch, batch_idx):
     for k in stat_batch.keys():
         if k not in stat_epoch.keys(): raise KeyError("key {} is not an epoch statistic".format(k))
+        # update moving average
         stat_epoch[k] = (batch_idx * stat_epoch[k] + stat_batch[k]) / (batch_idx + 1)
     return stat_epoch
 
 
-def evaluate(dataset, batch_size, model, loss_fn, metrics=None, kind='validation', torch_device=None, **kwargs):
+def evaluate(loader, model, loss_fn, metrics=None, kind='validation', torch_device=None, **kwargs):
     
     # TODO keep the possibility to have batch_size different from the size
     # of the whole validation / test dataset ?
 
-    loader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False
-    )
+    #loader = torch.utils.data.DataLoader(
+    #    dataset,
+    #    batch_size=batch_size,
+    #    shuffle=False
+    #)
 
     if kind == 'validation': prefix = 'val_'
     elif kind == 'test': prefix = 'test_'

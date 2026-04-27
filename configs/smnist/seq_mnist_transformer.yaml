@@ -1,0 +1,36 @@
+PROJECT: "seq_MNIST_transformer"
+DATASET:
+  NAME: sMNIST
+  TRAIN_SIZE: 50000
+  VAL_SIZE: 10000
+MODEL:
+  #ACTIVATION: $torch.nn.GELU
+  BIAS: True
+  ENCODING: linear
+  INPUT_SIZE: 512
+  NAME: Transformer
+  POOLING: average
+  SEED: [712,8] #[712,8,93,74,812]
+  SEQ_LENGTH: 784
+TRAIN:
+  BATCH_SIZE: 50
+  DISPLAY_EPOCH: True
+  DISPLAY_EVERY: null
+  LOSS_FN: $torch.nn.CrossEntropyLoss
+  LOSS_CONFIG: null
+  METRICS: {'accuracy': $torchmetrics.Accuracy}
+  METRICS_CONFIG:
+    task: multiclass
+    num_classes: 10
+  N_EPOCHS: 100
+  OPTIMIZER:  $torch.optim.AdamW
+  OPTIMIZER_CONFIG:
+    lr: [1.e-2,4.e-2]
+    weight_decay: 1.e-2
+  SCHEDULER: $torch.optim.lr_scheduler.StepLR
+  SCHEDULER_CONFIG:
+    gamma: 1.
+    step_size: 1
+  TORCH_DEVICE: cpu
+  USE_TQDM: False
+  USE_WANDB: False

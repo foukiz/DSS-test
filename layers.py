@@ -71,8 +71,8 @@ class DSSLayer(nn.Module):
         y = torch.fft.irfft(y_f, dim=1, n=n)[:,:L,:] # (B L H)
 
         # Compute D term in state space equation - essentially a skip connection
-        #y = y + contract('bhl,h->bhl', u, self.D)
-        y = y + u * self.D[None,None,:]  # (B L H)
+        y = y + oe.contract('blh,h->blh', u, self.D)
+        #y = y + u * self.D[None,None,:]  # (B L H)
 
         return y
 
@@ -212,6 +212,6 @@ if __name__ == "__main__":
     L = 16
     B = 5
     C = 2
-    layer = S4Layer(input_size=h, state_size=N, l_max=None)
+    layer = S4Layer(input_size=h, state_size=N)
     u = torch.randn(B, L, h)
     layer(u)

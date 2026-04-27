@@ -42,7 +42,7 @@ TRAIN:
   SCHEDULER_CONFIG:
     gamma: 0.9
     step_size: 1
-  TORCH_DEVICE: cuda:0
+  TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False
   USE_WANDB: False

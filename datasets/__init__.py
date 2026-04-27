@@ -6,3 +6,4 @@ import datasets.aan
 import datasets.pathfinder
 import datasets.smnist
 import datasets.pmnist
+import datasets.ptb

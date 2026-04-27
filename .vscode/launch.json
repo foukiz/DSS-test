@@ -132,6 +132,50 @@
                 "--config", "configs/pmnist/pmnist_S4.yaml",
                 "--use_tqdm"
             ]
+        },
+        {
+            "name": "Debug PTB S4",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/ptb/ptb_S4.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug sMNIST transformer",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/smnist/seq_mnist_transformer.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug PTB transformer",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/ptb/ptb_transformer.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Test micro copy task transformer",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/copytask/debug_copy_task_transformer.yaml",
+                "--use_tqdm"
+            ]
         }
     ]
 }

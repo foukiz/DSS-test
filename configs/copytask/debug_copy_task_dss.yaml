@@ -41,4 +41,4 @@ TRAIN:
   TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False
-  USE_WANDB: True
+  USE_WANDB: False

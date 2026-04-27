@@ -226,3 +226,58 @@ class S4(DSS):
                 norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
                 norms['norms/D_{}'.format(i)] = block.s4_layer.D.norm().item() / block.s4_layer.D.numel()
         return norms
+    
+
+
+
+
+
+
+
+class Transformer(nn.Module):
+
+    def __init__(
+        self,
+        input_size,
+        output_size,
+        data_dim,
+        seq_length,
+        bias=True,
+        encoding=None,
+        pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
+        seed=None,
+        **kwargs
+    ):
+        if seed:
+            torch.manual_seed(seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(seed)
+        super().__init__()
+
+        self.seq_length = seq_length
+        self.input_size = input_size
+        self.output_size = output_size
+
+        #self.embedding = nn.Embedding(data_dim, input_size)
+        self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
+        self.pos_embedding = nn.Embedding(seq_length, input_size)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=input_size,
+            nhead=8,
+            batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
+        self.output_layer = nn.Linear(input_size, output_size, bias=bias)
+        
+        # top pooling layer
+        self.top_pooling = TopPooling(mode=pooling)
+
+    def forward(self, u):
+        batch_size = u.shape[0]
+        positions = torch.arange(0, self.seq_length, device=u.device).unsqueeze(0).expand(batch_size, self.seq_length)
+
+        x = self.input_layer(u) + self.pos_embedding(positions)
+        x = self.transformer(x)  # Pass the embeddings through the Transformer
+        x = self.top_pooling(x)
+        x = self.output_layer(x)
+        return x

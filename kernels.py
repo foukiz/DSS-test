@@ -334,7 +334,8 @@ class HippoSSKernel(nn.Module):
         hurwitz=False,
         tie_state=False, # Tie parameters of HiPPO ODE across the H features
         precision=1, # 1 (single) or 2 (double) for the kernel
-        resample=False  # If given inputs of different lengths, adjust the sampling rate. Note that L should always be provided in this case, as it assumes that L is the true underlying length of the continuous signal
+        resample=False,  # If given inputs of different lengths, adjust the sampling rate. Note that L should always be provided in this case, as it assumes that L is the true underlying length of the continuous signal
+        **kwargs
     ):
         super().__init__()
         self.N = N

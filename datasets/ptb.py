@@ -51,12 +51,8 @@ class PennTreebank(Dataset):
 
     @property
     def input_flat_dimension(self):
-        return self._input_flat_dimension
+        return self._input_dimension
     
-    @input_flat_dimension.setter
-    def input_flat_dimension(self, value):
-        self._input_flat_dimension = value
-
     @property
     def image_size(self):
         return None
@@ -103,7 +99,7 @@ class PennTreebank(Dataset):
         else:
             self.vocab = make_vocab(data_dir=self.data_dir, save=True)
         self.input_dimension = len(self.vocab)
-        self.output_dimension = len(self.vocab)
+        self.num_outputs = len(self.vocab)
         self.padding_idx = self.vocab["<pad>"]
 
         if not os.path.exists(self.data_dir + '/data.pkl'):

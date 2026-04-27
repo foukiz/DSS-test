@@ -1,4 +1,4 @@
-PROJECT: "copytask_S4_test"
+PROJECT: "copytask_Transformer_test"
 DATASET:
   NAME: CopyMemory
   SENT_LENGTH: 10
@@ -8,19 +8,14 @@ DATASET:
   VAL_SIZE: 20
   VOCABULARY: 10
 MODEL:
-  ACTIVATION: $torch.nn.GELU
+  #ACTIVATION: $torch.nn.GELU
   BIAS: True
-  BIDIRECTIONAL: False
-  DROPOUT: 0.
-  ENCODING: embedding
   INPUT_SIZE: 8
   N_LAYERS: 6
-  NAME: S4
-  NORMALIZATION: batch_norm
+  NAME: Transformer
   POOLING: manytomany
-  PRENORM: True
   SEED: [712] #[712,8,93,74,812]
-  STATE_SIZE: 64
+  SEQ_LENGTH: 100
 TRAIN:
   BATCH_SIZE: 20
   DISPLAY_EPOCH: True
@@ -35,9 +30,8 @@ TRAIN:
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.StepLR
   SCHEDULER_CONFIG:
-    gamma: 0.8
+    gamma: 1.
     step_size: 1
   TORCH_DEVICE: cpu
-  TRACK_NORMS: True
-  USE_TQDM: False
+  USE_TQDM: True
   USE_WANDB: False

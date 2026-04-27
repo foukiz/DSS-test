@@ -63,11 +63,7 @@ class IMDB(Dataset):
 
     @property
     def input_flat_dimension(self):
-        return self._input_flat_dimension
-    
-    @input_flat_dimension.setter
-    def input_flat_dimension(self, value):
-        self._input_flat_dimension = value
+        return self._input_dimension
 
     @property
     def image_size(self):

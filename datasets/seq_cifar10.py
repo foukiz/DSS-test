@@ -1,7 +1,10 @@
 import torch
 import numpy as np
 from torchvision import datasets, transforms
-from .dataset import Dataset
+try:
+    from .dataset import Dataset
+except ImportError:
+    from dataset import Dataset
 
 
 class sCIFAR10(Dataset):
@@ -89,3 +92,15 @@ class sCIFAR10(Dataset):
         print("-" * 43 + f" {type(self).__name__} loaded " + "-" * 43)
 
         return train_ds, val_ds, test_ds
+    
+
+
+
+
+
+
+
+if __name__ == "__main__":
+
+    ds = sCIFAR10()
+    ds

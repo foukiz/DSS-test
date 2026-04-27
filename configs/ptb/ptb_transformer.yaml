@@ -1,4 +1,4 @@
-PROJECT: "PTB_S4"
+PROJECT: "PTB_transformer"
 DATASET:
   NAME: PTB
   SEQ_LENGTH: 150
@@ -7,19 +7,14 @@ DATASET:
   VAL_SIZE: 3370
   PADDING_IDX: 0
 MODEL:
-  ACTIVATION: $torch.nn.GELU
+  #ACTIVATION: $torch.nn.GELU
   BIAS: True
-  BIDIRECTIONAL: False
-  DROPOUT: 0.
   ENCODING: embedding
-  INPUT_SIZE: [256,128]
-  N_LAYERS: [6]
-  NAME: S4
-  NORMALIZATION: [layer_norm]
+  INPUT_SIZE: 512
+  NAME: Transformer
   POOLING: manytomany
-  PRENORM: [False]
-  SEED: [712,8,93,74,812]
-  STATE_SIZE: 64
+  SEED: [712,8,93] #[712,8,93,74,812]
+  SEQ_LENGTH: 150
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -31,9 +26,9 @@ TRAIN:
   METRICS_CONFIG:
     padding_idx: 0
   N_EPOCHS: 50
-  OPTIMIZER: $torch.optim.AdamW
+  OPTIMIZER:  $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [1.e-2, 4.e-2]
+    lr: [1.e-2,4.e-2]
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.StepLR
   SCHEDULER_CONFIG:

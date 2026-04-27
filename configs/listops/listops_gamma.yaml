@@ -10,7 +10,7 @@ DATASET:
   VAL_SIZE: 2000
   GENERATE: False
 MODEL:
-  ALPHA_MEAN: [1.,5.]
+  ALPHA_MEAN: [5.,10.]
   ALPHA_STD: [0.5]
   THETA_MEAN: [4.]
   THETA_STD: 0.5
@@ -20,9 +20,9 @@ MODEL:
   ENCODING: embedding
   N_LAYERS: 6
   NAME: DSS
-  NORMALIZATION: batch_norm
+  NORMALIZATION: [layer_norm]
   DROPOUT: 0.
-  INPUT_SIZE: 128
+  INPUT_SIZE: 256
   KERNEL_VERSION: gamma
   POOLING: average
   PRENORM: False
@@ -40,7 +40,7 @@ TRAIN:
   N_EPOCHS: 50
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [1.e-3,5.e-4]
+    lr: [5.e-3]
     weight_decay: 1.e-2
   SCHEDULER: $torch.optim.lr_scheduler.StepLR
   SCHEDULER_CONFIG:

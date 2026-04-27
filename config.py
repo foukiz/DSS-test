@@ -3,6 +3,7 @@ import yaml
 import sys
 
 from torch.optim import Optimizer
+from metrics import BPC
 
 from functools import reduce
 from typing import Any
@@ -138,4 +139,3 @@ class Config:
             else:
                 return getattr(sys_modules, function_name[1:])
         return function_name
-    
