@@ -10,23 +10,23 @@ DATASET:
   VAL_SIZE: 2000
   GENERATE: False
 MODEL:
-  ALPHA_MEAN: [5.,10.]
+  ALPHA_MEAN: [1.,2.,4.,8.]
   ALPHA_STD: [0.5]
   THETA_MEAN: [4.]
   THETA_STD: 0.5
   ACTIVATION: $torch.nn.GELU
   BIAS: True
   BIDIRECTIONAL: False
+  DROPOUT: 0.
   ENCODING: embedding
+  INPUT_SIZE: 128
+  KERNEL_VERSION: gamma
   N_LAYERS: 6
   NAME: DSS
-  NORMALIZATION: [layer_norm]
-  DROPOUT: 0.
-  INPUT_SIZE: 256
-  KERNEL_VERSION: gamma
+  NORMALIZATION: [batch_norm]
   POOLING: average
   PRENORM: False
-  SEED: [712,8] #[712,8,93,74,812]
+  SEED: [1112,712,8,93,74] #[712,8,93,74,812]
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -40,12 +40,11 @@ TRAIN:
   N_EPOCHS: 50
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [5.e-3]
-    weight_decay: 1.e-2
-  SCHEDULER: $torch.optim.lr_scheduler.StepLR
+    lr: [0.01]
+    weight_decay: 0.01
+  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    gamma: 1.
-    step_size: 1
+    patience: 5
   TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False

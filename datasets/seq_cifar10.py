@@ -71,7 +71,8 @@ class sCIFAR10(Dataset):
         return self.val_ds
 
     def import_dataset(self):
-        torch.manual_seed(42)
+        #torch.manual_seed(42)
+        gen = torch.Generator().manual_seed(42)
 
         # this transform allows to download the cifar10 images in the flattened shape
         transform = transforms.Compose([
@@ -85,7 +86,8 @@ class sCIFAR10(Dataset):
 
         train_ds, val_ds = torch.utils.data.random_split(
             datasets.CIFAR10("data/cifar10_data", train=True, download=True, transform=transform),
-            [self.train_size, self.val_size]
+            [self.train_size, self.val_size],
+            generator=gen
         )
         test_ds = datasets.CIFAR10("data/cifar10_data", train=False, download=True, transform=transform)
 

@@ -62,7 +62,16 @@ class Config:
         
     def instantiate_optimizer(self, params):
         if not self.train['optimizer_config']: self.train['optimizer'] = self.train['optimizer'](params=params)
-        else: self.train['optimizer'] = self.train['optimizer'](params=params, **self.train['optimizer_config'])
+        else:
+            if (self.train['optimizer'].__name__ == 'Adam' and
+                'beta1' in self.train['optimizer_config'].keys() and
+                'beta2' in self.train['optimizer_config'].keys()
+            ):
+                beta1 = self.train['optimizer_config'].pop('beta1')
+                beta2 = self.train['optimizer_config'].pop('beta2')
+                self.train['optimizer'] = self.train['optimizer'](params=params, betas=(beta1, beta2), **self.train['optimizer_config'])
+            else:
+                self.train['optimizer'] = self.train['optimizer'](params=params, **self.train['optimizer_config'])
         
     def instantiate_scheduler(self):
         optimizer = self.train['optimizer']

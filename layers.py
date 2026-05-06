@@ -18,6 +18,8 @@ class DSSLayer(nn.Module):
         input_size,
         state_size,
         bias=True,
+        activation=None,
+        dropout=0.0,
         version='exp',
         bidirectional=False,
         seed=None,
@@ -25,7 +27,7 @@ class DSSLayer(nn.Module):
         **kwargs
     ):  
         assert version in self.VERSIONS, "version must be one of {}".format(self.VERSIONS)
-        if seed: torch.manual_seed(seed)
+        #if seed: torch.manual_seed(seed)
         super().__init__()
 
         self.h = input_size
@@ -44,7 +46,13 @@ class DSSLayer(nn.Module):
             self.kernel = UniformExpectationKernel(self.h, **kwargs)
         elif version == 'exponential':
             self.kernel = ExponentialExpectationKernel(self.h, **kwargs)
-        self.bias = bias
+        #self.bias = bias
+
+        # should have been instantiated already
+        self.activation = activation
+        self.dropout = nn.Dropout2d(dropout) if dropout > 0.0 else nn.Identity()
+
+        self.linear = nn.Linear(input_size, input_size, bias=bias)
 
     def forward(self, u): # absorbs return_output and transformer src mask
         """
@@ -55,26 +63,28 @@ class DSSLayer(nn.Module):
         """
 
         # L (sequence length) is the second dimension, the first is the batch size
-        L = u.size(1)
+        L = u.size(-1)
 
         # Compute SS Kernel
         Lk = L if not self.max_kernel_length else min(self.max_kernel_length, L)
-        k = self.kernel(L=Lk)  # (Lk H)
+        k = self.kernel(L=Lk)  # (H Lk)
 
         # y = multiply_polynomials(u.unsqueeze(1), k.unsqueeze(0))[..., :L]  # (B 1 H L), (1 H Lk) -> (B H L)
-        # fft has to be performed along the seuquence length dimension ;
-        # hence the arguments dim=0 and dim=1 respectively in k_f and u_f
         n = L + Lk
-        k_f = torch.fft.rfft(k, dim=0, n=n)  # (~n/2 H)
-        u_f = torch.fft.rfft(u, dim=1, n=n)  # (B ~n/2 H)
-        y_f = k_f[None,:,:] * u_f            # (B ~n/2 H)
-        y = torch.fft.irfft(y_f, dim=1, n=n)[:,:L,:] # (B L H)
+        k_f = torch.fft.rfft(k, n=n)  # (H ~n/2)
+        u_f = torch.fft.rfft(u, n=n)  # (B H ~n/2)
+        y_f = oe.contract('bhl,hl->bhl', u_f, k_f)            # (B H ~n/2)
+        y = torch.fft.irfft(y_f, n=n)[... ,:L] # (B H L)
 
         # Compute D term in state space equation - essentially a skip connection
-        y = y + oe.contract('blh,h->blh', u, self.D)
-        #y = y + u * self.D[None,None,:]  # (B L H)
+        y = y + oe.contract('bhl,h->bhl', u, self.D)
+        #y = y + u * self.D[None,None,:]  # (B H L)
 
-        return y
+        y = self.dropout(self.activation(y))  # (B H L)
+
+        y = self.linear(y.transpose(-1, -2)).transpose(-1, -2)  # (B H L)
+
+        return y        # (B H L)
 
     @property
     def d_state(self):
@@ -150,7 +160,6 @@ class InputEncoder(nn.Module):
 
 
 
-
 class TopPooling(nn.Module):
     """ A layer to put on top of the sequence model that outputs a sequence to extract
         a single vector out of the sequence, or the whole sequence.
@@ -182,26 +191,63 @@ class Normalization(nn.Module):
         super().__init__()
         self.input_size = input_size
         self.mode = mode if mode is not None else 'none'
-        self.transpose = False
 
         assert mode in ['batch_norm', 'layer_norm', 'none'], "mode must be one of ['batch_norm', 'layer_norm', 'none']"
 
         if mode == 'batch_norm':
+            #self.norm = TransposeBatchNorm(input_size)
             self.norm = nn.BatchNorm1d(input_size)
-            self.transpose = True
         elif mode == 'layer_norm':
-            self.norm = nn.LayerNorm(input_size)
+            self.norm = CustomLayerNorm(input_size)
         else:
             self.norm = nn.Identity()
 
     def forward(self, x):
-        # x shape is (B, L, H)
-        if self.transpose: x = x.transpose(-1, -2)  # (B, L, H) -> (B, H, L)
+        #if transpose: x = x.transpose(-1, -2)  # (B, H, L) -> (B, L, H)
         x = self.norm(x)
-        if self.transpose: x = x.transpose(-1, -2)  # (B, H, L)-> (B, L, H)
-        return x
-    
+        #if transpose: x = x.transpose(-1, -2)  # (B, L, H) -> (B, H, L)
 
+        return x
+
+
+
+class TransposeBatchNorm(nn.Module):
+    """ A classic batch norm layer, but the input is expected to have shape (B, L, H)
+        and the normalization is performed on the H dimension
+    """
+
+    def __init__(self, input_size):
+        super().__init__()
+        self.input_size = input_size
+        self.norm = nn.BatchNorm1d(input_size)
+
+    def forward(self, x):
+        # x shape is (B, L, H)
+        x = x.transpose(-1, -2)  # (B, L, H) -> (B, H, L)
+        x = self.norm(x)
+        x = x.transpose(-1, -2)  # (B, H, L)-> (B, L, H)
+        return x
+
+class CustomLayerNorm(nn.Module):
+    """ expects shape (B, H, L)
+    """
+
+    def __init__(self, d, scalar=True):
+        super().__init__()
+        self.scalar = scalar
+        if self.scalar:
+            self.m = nn.Parameter(torch.zeros(1))
+            self.s = nn.Parameter(torch.ones(1))
+        else:
+            self.ln = nn.LayerNorm(d)
+
+    def forward(self, x):
+        if self.scalar:
+            s, m = torch.std_mean(x, dim=-2, unbiased=False, keepdim=True)
+            y = (self.s/s) * (x-m+self.m)
+        else:
+            y = self.ln(x.transpose(-1,-2)).transpose(-1,-2)
+        return y
 
 
 

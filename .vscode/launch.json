@@ -42,7 +42,8 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/seq_cifar10/seq_cifar10_dss.yaml",
-                "--use_tqdm"
+                "--use_tqdm",
+                "--pre_seed"
             ]
         },
         {

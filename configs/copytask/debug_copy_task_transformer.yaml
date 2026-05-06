@@ -10,6 +10,7 @@ DATASET:
 MODEL:
   #ACTIVATION: $torch.nn.GELU
   BIAS: True
+  ENCODING: embedding
   INPUT_SIZE: 8
   N_LAYERS: 6
   NAME: Transformer

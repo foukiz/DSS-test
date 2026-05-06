@@ -19,7 +19,7 @@ MODEL:
   KERNEL_VERSION: exp
   N_LAYERS: 6
   NAME: DSS
-  NORMALIZATION: [layer_norm,batch_norm]
+  NORMALIZATION: [batch_norm]
   POOLING: average
   PRENORM: False
   SEED: [1112,712,8,93,74] #[712,8,93,74,812]
@@ -37,8 +37,8 @@ TRAIN:
   N_EPOCHS: 50
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: 1.e-2
-    weight_decay: 1.e-2
+    lr: 0.01
+    weight_decay: 0.01
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
     patience: 5

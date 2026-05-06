@@ -37,8 +37,8 @@ class DSSKernel(nn.Module):
         self.sep_dt_re_im = sep_dt_re_im
         self.Lambda_init = Lambda_init
 
-        # complex tensors are stored as real with an extra last dim of size 2 
-        # to denote real, imag parts as ADAM moments are non-linear  
+        # complex tensors are stored as real with an extra last dim of size 2
+        # to denote real, imag parts as ADAM moments are non-linear
         log_dt, Lambda, W = self.init(N, H, dt_min, dt_max, Lambda_init)  # [H], [N 2], [H N 2]
 
         self.register_parameter('log_dt', torch.nn.Parameter(log_dt))
@@ -101,9 +101,7 @@ class DSSKernel(nn.Module):
             dt_Lambda = self.log_dt.exp().unsqueeze(-1) * Lambda             # [H N]
 
         P = dt_Lambda.unsqueeze(-1) * torch.arange(L, device=W.device)       # [H N L]
-        # replace the sequence length in first dimension
-        P = P.permute(-1, *range(P.ndim - 1))                               # [L H N]
-
+        
         if self.version in ['softmax']:
             # fast softmax using structure of P
             # see Appendix A.2 in https://arxiv.org/abs/2203.14343
@@ -111,8 +109,8 @@ class DSSKernel(nn.Module):
             if Lambda_gt_0.any():
                 with torch.no_grad():
                     P_max = dt_Lambda * (Lambda_gt_0 * (L-1))                # [H N]
-                P = P - P_max.unsqueeze(0)                                  # [L H N]
-            S = P.exp()                                                      # [L H N]
+                P = P - P_max.unsqueeze(-1)                                  # [H N L]
+            S = P.exp()                                                      # [H N L]
 
             dt_Lambda_neg = dt_Lambda * (1 - 2*Lambda_gt_0)                  # [H N]
             # 1 / S.sum(-1) == num / den
@@ -120,13 +118,11 @@ class DSSKernel(nn.Module):
             den = (dt_Lambda_neg * L).exp() - 1                              # [H N]
             W = W * num * reciprocal(den * Lambda, self.epsilon)             # [H N]
         else:
-            S = P.exp()                                                      # [L H N]
+            S = P.exp()                                                      # [H N L]
             if 'no-scale' not in self.version:
                 W = W * (dt_Lambda.exp() - 1.) * reciprocal(Lambda, clamp=True)  # [H N]
 
-        # version papier DSS, qui retourne l'état caché (mais ne sert à rien)
-        #return oe.contract('hn,lhn->lh', W, S).real.to(torch.float32), state     # [L H]
-        return oe.contract('hn,lhn->lh', W, S).real.to(torch.float32)            # [L H]
+        return oe.contract('hn,hnl->hl', W, S).float()            # [H L]
 
 
 
@@ -186,7 +182,7 @@ class GammaExpectationKernel(nn.Module):
         beta = 1. / theta + Delta * torch.arange(L+1, device=theta.device).unsqueeze(-1) # [L+1 H]
         k = d * theta**(-alpha-1.) / alpha * (beta[:-1,...]**(-alpha) - beta[1:,...]**(-alpha))                # [L H]
 
-        return k
+        return k.transpose(0,1)  # [H L]
     
     def Order2DL_forward(self, L, state=None):
         raise NotImplementedError
@@ -233,7 +229,7 @@ class ExponentialExpectationKernel(nn.Module):
         j = torch.arange(L, device=alpha.device).unsqueeze(1)
         k = d * alpha * torch.log(1 + Delta / (j * Delta + alpha))
 
-        return k
+        return k.transpose(0,1)  # [H L]
 
     def Order2DL_forward(self, L, state=None):
         raise NotImplementedError

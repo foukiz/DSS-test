@@ -12,7 +12,7 @@ MODEL:
   INPUT_SIZE: 256
   N_LAYERS: 6
   NAME: S4
-  NORMALIZATION: [layer_norm, batch_norm]
+  NORMALIZATION: [batch_norm]
   POOLING: average
   PRENORM: False
   SEED: [712,8,93] #[712,8,93,74,812]

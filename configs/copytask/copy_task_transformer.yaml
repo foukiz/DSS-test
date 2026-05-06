@@ -23,15 +23,16 @@ TRAIN:
   LOSS_FN: $torch.nn.CrossEntropyLoss
   LOSS_CONFIG: null
   METRICS: null
-  N_EPOCHS: 20
-  OPTIMIZER: $torch.optim.AdamW
+  N_EPOCHS: 3
+  OPTIMIZER: $torch.optim.Adam
   OPTIMIZER_CONFIG:
-    lr: [1.e-2,4.e-2]
-    weight_decay: 1.
-  SCHEDULER: $torch.optim.lr_scheduler.StepLR
+    lr: [1.e-4] #[1.e-2,4.e-2]
+    beta1: 0.9
+    beta2: 0.98
+    eps: 1.e-9
+  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    gamma: 1.
-    step_size: 1
+    patience: 10
   TORCH_DEVICE: cpu
   USE_TQDM: False
   USE_WANDB: False

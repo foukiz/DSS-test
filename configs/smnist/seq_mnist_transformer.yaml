@@ -10,7 +10,7 @@ MODEL:
   INPUT_SIZE: 512
   NAME: Transformer
   POOLING: average
-  SEED: [712,8] #[712,8,93,74,812]
+  SEED: [712,8,93,74,812]
   SEQ_LENGTH: 784
 TRAIN:
   BATCH_SIZE: 50
@@ -22,15 +22,16 @@ TRAIN:
   METRICS_CONFIG:
     task: multiclass
     num_classes: 10
-  N_EPOCHS: 100
-  OPTIMIZER:  $torch.optim.AdamW
+  N_EPOCHS: 60
+  OPTIMIZER: $torch.optim.Adam
   OPTIMIZER_CONFIG:
-    lr: [1.e-2,4.e-2]
-    weight_decay: 1.e-2
-  SCHEDULER: $torch.optim.lr_scheduler.StepLR
+    lr: [1.e-4] #[1.e-2,4.e-2]
+    beta1: 0.9
+    beta2: 0.98
+    eps: 1.e-9
+  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    gamma: 1.
-    step_size: 1
+    patience: 20
   TORCH_DEVICE: cpu
   USE_TQDM: False
   USE_WANDB: False

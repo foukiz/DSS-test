@@ -36,12 +36,11 @@ TRAIN:
   N_EPOCHS: 25
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [2.e-3]
+    lr: [0.002]
     weight_decay: 0.
-  SCHEDULER: $torch.optim.lr_scheduler.StepLR
+  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    gamma: 0.9
-    step_size: 1
+    patience: 20
   TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False

@@ -6,7 +6,7 @@ from collections import OrderedDict
 import opt_einsum as oe
 
 from layers import DSSLayer, S4Layer, TopPooling, InputEncoder, Normalization
-
+from transformer_layers import EncoderLayer, DecoderLayer, PositionalEncoding
 
 
 
@@ -38,12 +38,12 @@ class DSS(nn.Module):
         seed=None,
         **kwargs
     ):
-        assert n_layers > 0, (
-            f"DSS model should have at least one core dss layer, found n_layers = {n_layers}")
-        if seed:
-            torch.manual_seed(seed)
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed_all(seed)
+        #assert n_layers > 0, (
+        #    f"DSS model should have at least one core dss layer, found n_layers = {n_layers}")
+        #if seed:
+        #    torch.manual_seed(seed)
+        #    if torch.cuda.is_available():
+        #        torch.cuda.manual_seed_all(seed)
         super().__init__()
 
         self.input_size = input_size
@@ -59,51 +59,53 @@ class DSS(nn.Module):
             self.layer_norms = {'layer_norm_{}'.format(i): 0. for i in range(n_layers)}
             self.layer_norms.update({'input_layer_norm': 0., 'pooling_layer_norm': 0., 'output_norm': 0.})
 
-        self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
-        self.normalization_layer = Normalization(input_size, mode=normalization)
-        self.output_layer = nn.Linear(input_size, output_size, bias=bias)
-        self.drop = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
+        self.drop = nn.Dropout2d(dropout) if dropout > 0.0 else nn.Identity()
 
-        self.core_blocks = []
+        self.dss_blocks = []
+        self.inner_normalizations = []
 
         for i in range(n_layers):
             # stacker n_layers blocs DSS:
             # DSSLayer (core) + activation + dropout + linear (mixing layer)
-            core_block = nn.Sequential(OrderedDict([
-                ('dss_layer', DSSLayer(input_size=input_size, state_size=state_size, version=self.version, bidirectional=bidirectional, bias=bias, **kwargs)),
-                ('activation', self.activation),
-                #('dropout', nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()),
-                ('dropout', self.drop),
-                ('linear', nn.Linear(input_size, input_size, bias=bias))
-            ]))
-            setattr(self, f'core_block_{i}', core_block)
-            self.core_blocks.append(core_block)
+            dss_layer = DSSLayer(input_size=input_size, state_size=state_size, activation=activation, dropout=dropout, version=self.version, bidirectional=bidirectional, bias=bias, **kwargs)
+            setattr(self, f'core_block_{i}', dss_layer)
+            self.dss_blocks.append(dss_layer)
+            setattr(self, f"inner_normalization_{i}", Normalization(input_size, mode=normalization))
+            self.inner_normalizations.append(getattr(self, f"inner_normalization_{i}"))
 
+        self.normalization_layer = Normalization(input_size, mode=normalization) if prenorm else nn.Identity()
+        self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
+        self.output_layer = nn.Linear(input_size, output_size, bias=bias)
         # top pooling layer
         self.top_pooling = TopPooling(mode=pooling)
 
-    def forward(self, u):
+    def forward(self, u, transpose=True):
+        """ Input u should be of shape (B, L) if encoding is 'embedding', else (B, L, data_dim)"""
         x = self.input_layer(u)
         if self.track_norms: self.layer_norms['input_layer_norm'] += self.compute_layer_norm(x)
-        for i, block in enumerate(self.core_blocks):
+        if transpose: x = x.transpose(-1, -2)  # (B H L)
+        for i, layer in enumerate(self.dss_blocks):
             if self.residual: y = x
-            if self.prenorm: x = self.normalization_layer(x)
+            if self.prenorm: x = self.inner_normalizations[i](x)
             # DSS core computation + activation + dropout + linear mixing
-            x = block(x)
-            if self.residual: x = self.drop(x) + y
-            if not self.prenorm: x = self.normalization_layer(x)
-            if self.track_norms: self.layer_norms['layer_norm_{}'.format(i)] += self.compute_layer_norm(x)
-        if self.prenorm: x = self.normalization_layer(x)
+            x = layer(x)  # (B L H) / (B H L)
+            if self.residual: x = self.drop(x)  + y
+            if not self.prenorm: x = self.inner_normalizations[i](x)
+            if self.track_norms: self.layer_norms['layer_norm_{}'.format(i)] += self.compute_layer_norm(x, transpose=transpose)
+        # if prenorm, just the identity
+        x = self.normalization_layer(x)
+        # pooling along the length dimension
+        if transpose: x = x.transpose(-1, -2)  # (B H L) -> (B L H)
         x = self.top_pooling(x)
-        if self.track_norms: self.layer_norms['pooling_layer_norm'] += self.compute_layer_norm(x, is_sequence=False)
+        if self.track_norms: self.layer_norms['pooling_layer_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
         x = self.output_layer(x)
-        if self.track_norms: self.layer_norms['output_norm'] += self.compute_layer_norm(x, is_sequence=False)
+        if self.track_norms: self.layer_norms['output_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
         return x
 
     def __str__(self):
         ret_str = str(self.input_layer) + "\n"
         ret_str += str(self.core_block_0) + "\n"
-        ret_str += "X {}".format(len(self.core_blocks)) + "\n"
+        ret_str += "X {}".format(len(self.dss_blocks)) + "\n"
         ret_str += str(self.normalization_layer) + "\n"
         ret_str += str(self.top_pooling) + "\n"
         ret_str += str(self.output_layer)
@@ -116,13 +118,13 @@ class DSS(nn.Module):
         
         norms = {}
         with torch.no_grad():
-            for i, block in enumerate(self.core_blocks):
+            for i, block in enumerate(self.dss_blocks):
                 k = block.dss_layer.kernel(L)
                 norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
                 norms['norms/D_{}'.format(i)] = block.dss_layer.D.norm().item() / block.dss_layer.D.numel()
         return norms
 
-    def compute_layer_norm(self, x, is_sequence=True):
+    def compute_layer_norm(self, x, is_sequence=True, transpose=True):
         """ Compute the norms of the first item of the sequence, averaged over batches
         """
 
@@ -131,10 +133,11 @@ class DSS(nn.Module):
             y = x.mean(dim=0)
             # keep only the first item of the sequence
             if is_sequence:
-                y = y[0]
+                if transpose: y = y[..., 0]  # (H) --- if x is (B H L)
+                else: y = y[0]
 
         return y.norm().item() / y.numel()
-    
+
     def average_layer_norms(self, n_batches):
         for k in self.layer_norms.keys():
             self.layer_norms[k] /= n_batches
@@ -231,10 +234,7 @@ class S4(DSS):
 
 
 
-
-
-
-class Transformer(nn.Module):
+class TransformerEncoder(nn.Module):
 
     def __init__(
         self,
@@ -244,6 +244,7 @@ class Transformer(nn.Module):
         seq_length,
         bias=True,
         encoding=None,
+        dropout=0.1,
         pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
         seed=None,
         **kwargs
@@ -257,6 +258,10 @@ class Transformer(nn.Module):
         self.seq_length = seq_length
         self.input_size = input_size
         self.output_size = output_size
+        if kwargs.get('padding_idx') is not None:
+            self.padding_idx = kwargs.get('padding_idx')
+        else:
+            self.padding_idx = None
 
         #self.embedding = nn.Embedding(data_dim, input_size)
         self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
@@ -264,20 +269,83 @@ class Transformer(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=input_size,
             nhead=8,
-            batch_first=True
+            batch_first=True,
+            norm_first=True
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=6)
         self.output_layer = nn.Linear(input_size, output_size, bias=bias)
+        self.dropout = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
         
         # top pooling layer
         self.top_pooling = TopPooling(mode=pooling)
 
+    def generate_causal_mask(self, seq_length, device):
+        return torch.triu(
+            torch.ones(seq_length, seq_length, device=device),
+            diagonal=1
+        ).bool()
+
     def forward(self, u):
+        #mask = self.generate_mask(u)
+        mask = self.generate_causal_mask(self.seq_length, u.device)
         batch_size = u.shape[0]
         positions = torch.arange(0, self.seq_length, device=u.device).unsqueeze(0).expand(batch_size, self.seq_length)
+        src_key_padding_mask = None if self.padding_idx is None else (u == self.padding_idx)
 
-        x = self.input_layer(u) + self.pos_embedding(positions)
-        x = self.transformer(x)  # Pass the embeddings through the Transformer
+        x = self.dropout(
+            self.input_layer(u) + self.pos_embedding(positions)
+        )
+        x = self.transformer(x, mask=mask, src_key_padding_mask=src_key_padding_mask)  # Pass the embeddings through the Transformer
         x = self.top_pooling(x)
         x = self.output_layer(x)
         return x
+
+
+
+
+class Transformer(nn.Module):
+    def __init__(
+        self,
+        src_vocab_size,
+        tgt_vocab_size,
+        d_model,
+        num_heads,
+        num_layers,
+        d_ff,
+        max_seq_length,
+        dropout
+    ):
+        super(Transformer, self).__init__()
+        self.encoder_embedding = nn.Embedding(src_vocab_size, d_model)
+        self.decoder_embedding = nn.Embedding(tgt_vocab_size, d_model)
+        self.positional_encoding = PositionalEncoding(d_model, max_seq_length)
+
+        self.encoder_layers = nn.ModuleList([EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
+        self.decoder_layers = nn.ModuleList([DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
+
+        self.fc = nn.Linear(d_model, tgt_vocab_size)
+        self.dropout = nn.Dropout(dropout)
+
+    def generate_mask(self, src, tgt):
+        src_mask = (src != 0).unsqueeze(1).unsqueeze(2)
+        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3)
+        seq_length = tgt.size(1)
+        nopeak_mask = (1 - torch.triu(torch.ones(1, seq_length, seq_length), diagonal=1)).bool()
+        tgt_mask = tgt_mask & nopeak_mask
+        return src_mask, tgt_mask
+
+    def forward(self, src, tgt):
+        src_mask, tgt_mask = self.generate_mask(src, tgt)
+        src_embedded = self.dropout(self.positional_encoding(self.encoder_embedding(src)))
+        tgt_embedded = self.dropout(self.positional_encoding(self.decoder_embedding(tgt)))
+
+        enc_output = src_embedded
+        for l in self.encoder_layers:
+            enc_output = l(enc_output, src_mask)
+
+        dec_output = tgt_embedded
+        for l in self.decoder_layers:
+            dec_output = l(dec_output, enc_output, src_mask, tgt_mask)
+
+        output = self.fc(dec_output)
+        return output
