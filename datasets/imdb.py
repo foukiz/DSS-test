@@ -7,7 +7,7 @@ import sys
 import torch
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, Subset
-#from torchtext.vocab import build_vocab_from_iterator
+from torchtext.vocab import build_vocab_from_iterator
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -107,9 +107,9 @@ class IMDB(Dataset):
         print("-" * 60 + f"Loading {type(self).__name__}" + "-" * 60)
 
         if not os.path.exists(self.data_dir + '/data.pkl'):
-            inputs, targets, vocab = process_raw_csv_data(max_len=self.seq_length)
+            inputs, targets, lengths, vocab = process_raw_csv_data(max_len=self.seq_length)
             self.vocab = vocab
-            to_pickle(inputs, targets, vocab)
+            to_pickle(inputs, targets, lengths, vocab)
         with open(self.data_dir + '/data.pkl', 'rb') as f:
             dic = pkl.load(f)
             self.vocab = dic['vocab']
@@ -143,7 +143,12 @@ def process_raw_csv_data(
     tokenize = lambda example: list(example)[:max_len]
     df['review'] = df['review'].apply(tokenize)
     df['sentiment'] = df['sentiment'].map({"negative":0., "positive":1.})
-    vocab = utils.build_vocab(
+    #vocab = utils.build_vocab(
+    #    df['review'],
+    #    min_freq=min_freq,
+    #    specials=["<pad>", "<unk>"] + (["<bos>"] if append_bos else []) + (["<eos>"] if append_eos else [])
+    #)
+    vocab = build_vocab_from_iterator(
         df['review'],
         min_freq=min_freq,
         specials=["<pad>", "<unk>"] + (["<bos>"] if append_bos else []) + (["<eos>"] if append_eos else [])
@@ -153,20 +158,21 @@ def process_raw_csv_data(
     numericalize = lambda example: vocab(
         (["<bos>"] if append_bos else []) + example + (["<eos>"] if append_eos else []))
     df['review'] = df['review'].apply(numericalize)
+    lengths = torch.tensor(df['review'].apply(len))
+
     df['review'] = df['review'].apply(
         lambda x: utils.pad_sequence(x, max_len=(max_len+int(append_bos)+int(append_eos)), pad_val=vocab['<pad>']))
 
     inputs = torch.tensor(df['review'], dtype=torch.int32)
     targets = torch.tensor(df['sentiment'], dtype=torch.int64)
-
     print("preprocessing done.")
 
-    return inputs, targets, vocab
+    return inputs, targets, lengths, vocab
 
 
 
-def to_pickle(inputs, targets, vocab):
-    ds = TensorDataset(inputs, targets)
+def to_pickle(inputs, targets, lengths, vocab):
+    ds = TensorDataset(inputs, targets, lengths)
     train_ds = Subset(ds, range(0, 25000))
     val_ds = Subset(ds, range(25000, 37500))
     test_ds = Subset(ds, range(37500, 50000))
@@ -184,15 +190,11 @@ def to_pickle(inputs, targets, vocab):
 
 
 
-def main():
-    inputs, targets, vocab = process_raw_csv_data()
-    to_pickle(inputs, targets, vocab)
-    ds = IMDB()
-    print()
-
-
 
 
 
 if __name__ == "__main__":
-    main()
+    inputs, targets, lengths, vocab = process_raw_csv_data()
+    to_pickle(inputs, targets, lengths, vocab)
+    ds = IMDB()
+    print()

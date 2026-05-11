@@ -1,7 +1,12 @@
 # Core ML
-torch==2.2.1+computecanada
-torchvision==0.17.1+computecanada
-torchmetrics==1.9.0
+#torch==2.2.1+computecanada
+torch==2.3.1+computecanada
+#torchvision==0.17.1+computecanada
+torchvision==0.18.1+computecanada
+#torchtext==0.17.1+computecanada
+torchtext==0.18.0+computecanada
+#torchmetrics==1.9.0
+torchmetrics==1.8.2
 
 # Data & computation
 numpy==1.26.4

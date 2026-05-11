@@ -4,6 +4,7 @@ import numpy as np
 
 from tqdm import tqdm
 
+from utils import unpack_batch
 
 
 
@@ -60,7 +61,8 @@ def train(
         if use_tqdm: train_loader = tqdm(train_loader)
 
         # enter the loop over batches
-        for batch_idx, (batch_x, batch_y) in enumerate(train_loader):
+        for batch_idx, batch in enumerate(train_loader):
+            batch_x, batch_y, batch_lengths = unpack_batch(batch, torch_device)
             # set data to be displayed next to the progress bar
             if use_tqdm:
                 train_loader.set_description(f"Epoch {epoch+1}/{n_epochs}")
@@ -72,7 +74,7 @@ def train(
                 train_loader.set_postfix(tqdm_postfix)
 
             # make a training step, and record additional data if required
-            stat_batch = training_step(batch_x, batch_y, model, optimizer, loss_fn, metrics=metrics, get_gradients=get_gradients, torch_device=torch_device)
+            stat_batch = training_step(batch_x, batch_y, batch_lengths, model, optimizer, loss_fn, metrics=metrics, get_gradients=get_gradients, torch_device=torch_device)
 
             # update training data: average loss, metrics etc
             stat_epoch = batch_update(stat_epoch, stat_batch, batch_idx)
@@ -109,15 +111,19 @@ def train(
                 layer_norms = {'layer_norm/'+k: v for k, v in model.layer_norms.items()}
                 wandb_dic.update(norms)
                 wandb_dic.update(layer_norms)
-            wandb.log(wandb_dic)
+            #wandb.log(wandb_dic)
+            try:
+                wandb.log(wandb_dic)
+            except Exception as e:
+                print(f"WANDB ERROR: {e}")
 
     return model
 
-def training_step(batch_x, batch_y, model, optimizer, loss_fn, metrics, torch_device=None, **kwargs):
+def training_step(batch_x, batch_y, batch_lengths, model, optimizer, loss_fn, metrics, torch_device=None, **kwargs):
 
     model.train()
     batch_x, batch_y = batch_x.to(torch_device), batch_y.to(torch_device).view(-1)
-    predictions = model(batch_x).view(-1, model.output_size).squeeze()
+    predictions = model(batch_x, batch_lengths).view(-1, model.output_size).squeeze()
     loss = loss_fn(predictions, batch_y)
 
     # update weights
@@ -149,12 +155,6 @@ def evaluate(loader, model, loss_fn, metrics=None, kind='validation', torch_devi
     # TODO keep the possibility to have batch_size different from the size
     # of the whole validation / test dataset ?
 
-    #loader = torch.utils.data.DataLoader(
-    #    dataset,
-    #    batch_size=batch_size,
-    #    shuffle=False
-    #)
-
     if kind == 'validation': prefix = 'val_'
     elif kind == 'test': prefix = 'test_'
     else: raise AttributeError("evaluation kind {} unknown".format(kind))
@@ -166,11 +166,12 @@ def evaluate(loader, model, loss_fn, metrics=None, kind='validation', torch_devi
 
     # Disable gradient computation and reduce memory consumption.
     with torch.no_grad():
-        for i, (vinputs, vlabels) in enumerate(loader):
+        for i, val_batch in enumerate(loader):
+            vinputs, vlabels, vlengths = unpack_batch(val_batch, torch_device)
             vinputs = vinputs.to(torch_device)
             vlabels = vlabels.to(torch_device).view(-1)
 
-            voutputs = model(vinputs).reshape(-1, model.output_size)
+            voutputs = model(vinputs, vlengths).reshape(-1, model.output_size)
 
             vloss = loss_fn(voutputs, vlabels)
             running_vloss += vloss.item()

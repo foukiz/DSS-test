@@ -1,4 +1,4 @@
-PROJECT: "IMDB_gamma_no_norm"
+PROJECT: "IMDB_gamma"
 DATASET:
   NAME: IMDB
   MAX_LEN: 2048
@@ -6,9 +6,9 @@ DATASET:
   TRAIN_SIZE: 25000
   VAL_SIZE: 12500
 MODEL:
-  ALPHA_MEAN: [3.,4.,6.]
+  ALPHA_MEAN: [1.] #[1.,2.,4.,8.]
   ALPHA_STD: [0.5]
-  THETA_MEAN: [4.]
+  THETA_MEAN: [1.,2.,3.,5.] #[4.]
   THETA_STD: 0.5
   ACTIVATION: $torch.nn.GELU
   BIAS: True
@@ -22,7 +22,8 @@ MODEL:
   NORMALIZATION: batch_norm
   POOLING: last
   PRENORM: True
-  SEED: [712,8,93] #[712,8,93,74,812]
+  SEED: [1112,0,712] #[712,8,93,74,812]
+  USE_LENGTHS: True
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -40,7 +41,7 @@ TRAIN:
     weight_decay: 0.
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    patience: 10
+    patience: 5
   TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False

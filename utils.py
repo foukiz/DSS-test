@@ -134,6 +134,18 @@ def pad_sequence(seq, max_len, pad_val=0):
 
 
 
+def unpack_batch(batch, torch_device):
+    """ how to unpack the batch, depending on its content
+    """
+    if len(batch) == 2:
+        batch_x, batch_y = batch
+        batch_lengths = None
+    elif len(batch) == 3:
+        batch_x, batch_y, batch_lengths = batch
+        batch_lengths = batch_lengths.to(torch_device)
+    return batch_x, batch_y, batch_lengths
+
+
 class Vocab():
 
     def __init__(self, vocab) -> None:

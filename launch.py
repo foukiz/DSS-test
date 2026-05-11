@@ -1,7 +1,12 @@
 from utils import find_file, iter_configs, assert_single_run_config, has_internet
 
 import os
-os.environ["WANDB_MODE"] = "online" if has_internet() else "offline"
+os.environ["WANDB_START_METHOD"] = "thread"
+os.environ["WANDB__SERVICE_WAIT"] = "300"
+#os.environ["WANDB_MODE"] = "online" if has_internet() else "offline"
+os.environ["WANDB_MODE"] = "offline"
+
+import wandb
 
 import torch
 import random
@@ -9,7 +14,7 @@ import numpy as np
 import os
 
 import argparse
-import wandb
+import uuid
 
 import time
 from datetime import datetime, timedelta
@@ -34,7 +39,7 @@ def parse_args():
     parser.add_argument("--use_wandb", action="store_true")
     parser.add_argument("--use_tqdm", action="store_true")
     parser.add_argument("--no_train", action="store_true")
-    parser.add_argument("--pre_seed", action="store_true")
+    parser.add_argument("--pre_seed", type=str, default=True)
     parser.add_argument("--device", type=str, default='cpu')
     parser.add_argument("--save_network", action="store_true")
     parser.add_argument("--save_name", type=str, default=None)
@@ -136,6 +141,8 @@ def launch(
     cfg.train['use_wandb'] = use_wandb
     use_tqdm = use_tqdm or cfg.train['use_tqdm']
     cfg.train['use_tqdm'] = use_tqdm
+    model_id = str(uuid.uuid4())[:8]
+    cfg.config['run_ID'] = model_id
 
     training = not ARGS['no_train']
 
@@ -161,10 +168,10 @@ def launch(
 
     kwargs = {}
     dataset = make_dataset(**cfg.dataset)
-    if hasattr(dataset, 'padding_idx'):
-        kwargs.update({'padding_idx': dataset.padding_idx})
-        if 'crossentropyloss' in config['TRAIN']['LOSS_FN'].lower():
-            cfg.train['loss_fn'] = torch.nn.CrossEntropyLoss(ignore_index=dataset.padding_idx)
+    #if hasattr(dataset, 'padding_idx'):
+    #    kwargs.update({'padding_idx': dataset.padding_idx})
+    #    if 'crossentropyloss' in config['TRAIN']['LOSS_FN'].lower():
+    #        cfg.train['loss_fn'] = torch.nn.CrossEntropyLoss(ignore_index=dataset.padding_idx)
     input_dim = dataset.input_flat_dimension
     output_dim = dataset.num_outputs
     try:
@@ -199,7 +206,7 @@ def launch(
 
     if save_network:
         if save_name is None:
-            save_name = f"{cfg.model['name']}_{datetime.now().strftime('%Y%m%d_%H%M')}"
+            save_name = f"{cfg.model['name']}_{datetime.now().strftime('%Y%m%d_%H%M')}_{model_id}"
         if dataset.test_ds is None: stat_test=None
         run_url = wandb.run.url if use_wandb else None
         save_model(model, dataset, save_name, stat_dict=stat_test, run_url=run_url)

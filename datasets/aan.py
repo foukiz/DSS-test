@@ -104,7 +104,9 @@ class AAN(Dataset):
             ds = torch.load(f)
             datasets.append(ds)
         train_ds = ConcatDataset(datasets)
-        
+
+        raise NotImplementedError("ajouté les lengths comme troisième tensor à passer en entrée")
+
         return train_ds
 
     def import_dataset(self):

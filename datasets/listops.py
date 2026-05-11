@@ -11,6 +11,8 @@ except ImportError:
 
 from torch.utils.data import TensorDataset
 
+from torchtext.vocab import build_vocab_from_iterator
+
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -44,7 +46,7 @@ class ListOps(Dataset):
         self.data_dir = data_dir
         self.generate = generate
         self.vocab = None
-       
+
         # reset after tests
         super().__init__(train_size, val_size, test_size, seq_length=max_len, **kwargs)
 
@@ -99,8 +101,9 @@ class ListOps(Dataset):
         return self.val_ds
 
     def import_dataset(self):
-        torch.manual_seed(0)
-        
+        #torch.manual_seed(0)
+        gen = torch.Generator().manual_seed(42)
+
         print("-" * 60 + f"Loading {type(self).__name__}" + "-" * 60)
 
         if self.generate:
@@ -114,24 +117,24 @@ class ListOps(Dataset):
         self.padding_idx = self.vocab["<pad>"]
 
         if not os.path.exists(self.data_dir + '/data.pkl'):
-            x_train, y_train = process_data(vocab=self.vocab, max_len=self.max_len, kind='train')
-            x_val, y_val = process_data(vocab=self.vocab, max_len=self.max_len, kind='val')
-            x_test, y_test = process_data(vocab=self.vocab, max_len=self.max_len, kind='test')
+            x_train, y_train, lengths_train = process_data(vocab=self.vocab, max_len=self.max_len, kind='train')
+            x_val, y_val, lengths_val = process_data(vocab=self.vocab, max_len=self.max_len, kind='val')
+            x_test, y_test, lengths_test = process_data(vocab=self.vocab, max_len=self.max_len, kind='test')
             data = {
-                'train_ds': (x_train, y_train),
-                'val_ds': (x_val, y_val),
-                'test_ds': (x_test, y_test)
+                'train_ds': (x_train, y_train, lengths_train),
+                'val_ds': (x_val, y_val, lengths_val),
+                'test_ds': (x_test, y_test, lengths_test)
             }
             with open(self.data_dir + "/data.pkl", "wb") as f: pkl.dump(data, f)
         else:
             with open(self.data_dir + "/data.pkl", "rb") as f: data = pkl.load(f)
-            x_train, y_train = data['train_ds']
-            x_val, y_val = data['val_ds']
-            x_test, y_test = data['test_ds']
+            x_train, y_train, lengths_train = data['train_ds']
+            x_val, y_val, lengths_val = data['val_ds']
+            x_test, y_test, lengths_test = data['test_ds']
 
-        train_ds = TensorDataset(x_train, y_train)
-        val_ds = TensorDataset(x_val, y_val)
-        test_ds = TensorDataset(x_test, y_test)
+        train_ds = TensorDataset(x_train, y_train, lengths_train)
+        val_ds = TensorDataset(x_val, y_val, lengths_val)
+        test_ds = TensorDataset(x_test, y_test, lengths_test)
 
         print("-" * 60 + f"{type(self).__name__} loaded" + "-" * 60)
 
@@ -154,7 +157,7 @@ def make_vocab(append_bos=False, append_eos=True, data_dir=DATA_DIR, save=True):
     """ Return the vocabulary (an instance of Vocab) made out of the ListOps validation file
     """
 
-    df = pd.read_csv(data_dir + f'/val.tsv', sep='\t', usecols=['Source','Target'])
+    df = pd.read_csv(data_dir + f'/train.tsv', sep='\t', usecols=['Source','Target'])
     #df.columns = ["label", "input1_id", "input2_id", "text1", "text2"]
 
     # decode to the right format
@@ -163,7 +166,7 @@ def make_vocab(append_bos=False, append_eos=True, data_dir=DATA_DIR, save=True):
 
     print("Building vocab...")
 
-    vocab = utils.build_vocab(
+    vocab = build_vocab_from_iterator(
         iterator,
         specials=["<pad>", "<unk>"] + (["<bos>"] if append_bos else []) + (["<eos>"] if append_eos else [])
     )
@@ -192,6 +195,8 @@ def process_data(
     numericalize = lambda example: vocab(
         (["<bos>"] if append_bos else []) + example + (["<eos>"] if append_eos else []))
     df['Source'] = df['Source'].apply(numericalize)
+    lengths = torch.tensor(df['Source'].apply(len))
+
     df['Source'] = df['Source'].apply(
         lambda x: utils.pad_sequence(
             x, max_len=(max_len+int(append_bos)+int(append_eos)), pad_val=vocab['<pad>']))
@@ -201,7 +206,11 @@ def process_data(
 
     print("preprocessing done.")
 
-    return inputs, targets
+    return inputs, targets, lengths
+
+
+
+
 
 
 

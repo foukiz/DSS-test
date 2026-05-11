@@ -42,8 +42,7 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/seq_cifar10/seq_cifar10_dss.yaml",
-                "--use_tqdm",
-                "--pre_seed"
+                "--use_tqdm"
             ]
         },
         {
@@ -54,7 +53,9 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/copytask/debug_copy_task_dss.yaml",
-                "--use_tqdm"
+                "--use_tqdm",
+                "--use_wandb",
+                "--save_network"
             ]
         },
         {

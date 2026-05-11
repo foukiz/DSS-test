@@ -5,7 +5,7 @@ DATASET:
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU 
-  ALPHA_MEAN: [1.,2.,4.,8.]
+  ALPHA_MEAN: [1.,2.] #[1.,2.,4.,8.]
   ALPHA_STD: [0.5]
   THETA_MEAN: [4.]
   THETA_STD: 0.5
@@ -20,7 +20,8 @@ MODEL:
   NORMALIZATION: layer_norm
   POOLING: average
   PRENORM: False
-  SEED: [1112,0] #[712,8,93,74,812]
+  SEED: [1112,0,712] #[712,8,93,74,812]
+  USE_LENGTHS: False
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
@@ -31,14 +32,14 @@ TRAIN:
   METRICS_CONFIG:
     task: multiclass
     num_classes: 10
-  N_EPOCHS: 200
+  N_EPOCHS: 150
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
     lr: [0.004]
-    weight_decay: 0.01
+    weight_decay: [0.01,0.]
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    patience: 10
+    patience: 20
   TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False

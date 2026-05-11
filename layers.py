@@ -165,23 +165,35 @@ class TopPooling(nn.Module):
         a single vector out of the sequence, or the whole sequence.
     """
 
-    def __init__(self, mode='last'):
+    def __init__(self, mode='last', use_lengths=False):
         super().__init__()
         assert mode in ['average', 'last', 'manytomany'], "mode must be one of ['average', 'last', 'manytomany']"
         self.mode = mode
+        self.use_lengths = use_lengths
 
-    def forward(self, x):
+    def forward(self, x, batch_lengths=None):
         """ Sequence should be of shape (B, L, N)
         """
 
         if self.mode == 'average':
-            x = x.mean(dim=-2)  # (B, N)
+            restrict = lambda x: x.mean(dim=-2)  # (B, N)
         elif self.mode == 'last':
-            x = x[:, -1, :]   # (B, N)
+            restrict = lambda x: x[..., -1, :]   # (B, N)
         elif self.mode == 'manytomany':
-            pass  # (B, L, N)
+            restrict = lambda x: x  # (B, L, N)
         else:
             raise NotImplementedError(f"Pooling mode {self.mode} not implemented")
+        
+        if self.use_lengths:
+            assert batch_lengths is not None
+            x = torch.stack([
+                restrict(out[..., :length, :])
+                for out, length
+                in zip(torch.unbind(x, dim=0), batch_lengths)
+            ], dim=0)
+        else:
+            x = restrict(x)
+
         return x
 
 

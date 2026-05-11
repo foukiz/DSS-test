@@ -34,6 +34,7 @@ class DSS(nn.Module):
         prenorm=False,
         residual=True,
         pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
+        use_lengths=False,
         track_norms=False,
         seed=None,
         **kwargs
@@ -77,13 +78,13 @@ class DSS(nn.Module):
         self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
         self.output_layer = nn.Linear(input_size, output_size, bias=bias)
         # top pooling layer
-        self.top_pooling = TopPooling(mode=pooling)
+        self.top_pooling = TopPooling(mode=pooling, use_lengths=use_lengths)
 
-    def forward(self, u, transpose=True):
+    def forward(self, u, batch_lengths=None, transpose=True):
         """ Input u should be of shape (B, L) if encoding is 'embedding', else (B, L, data_dim)"""
         x = self.input_layer(u)
-        if self.track_norms: self.layer_norms['input_layer_norm'] += self.compute_layer_norm(x)
         if transpose: x = x.transpose(-1, -2)  # (B H L)
+        if self.track_norms: self.layer_norms['input_layer_norm'] += self.compute_layer_norm(x, transpose=transpose)
         for i, layer in enumerate(self.dss_blocks):
             if self.residual: y = x
             if self.prenorm: x = self.inner_normalizations[i](x)
@@ -96,7 +97,7 @@ class DSS(nn.Module):
         x = self.normalization_layer(x)
         # pooling along the length dimension
         if transpose: x = x.transpose(-1, -2)  # (B H L) -> (B L H)
-        x = self.top_pooling(x)
+        x = self.top_pooling(x, batch_lengths=batch_lengths)
         if self.track_norms: self.layer_norms['pooling_layer_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
         x = self.output_layer(x)
         if self.track_norms: self.layer_norms['output_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
@@ -119,9 +120,9 @@ class DSS(nn.Module):
         norms = {}
         with torch.no_grad():
             for i, block in enumerate(self.dss_blocks):
-                k = block.dss_layer.kernel(L)
+                k = block.kernel(L)
                 norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
-                norms['norms/D_{}'.format(i)] = block.dss_layer.D.norm().item() / block.dss_layer.D.numel()
+                norms['norms/D_{}'.format(i)] = block.D.norm().item() / block.D.numel()
         return norms
 
     def compute_layer_norm(self, x, is_sequence=True, transpose=True):
