@@ -16,7 +16,7 @@ MODEL:
   NORMALIZATION: [layer_norm]
   POOLING: average
   PRENORM: False
-  SEED: [1112,0,712,8,93] #[712,8,93,74,812]
+  SEED: [1112,0] #[712,8,93,74,812]
   STATE_SIZE: [64]
   USE_LENGTHS: False
 TRAIN:
@@ -38,6 +38,6 @@ TRAIN:
   SCHEDULER_CONFIG:
     patience: 10
   TORCH_DEVICE: cpu
-  TRACK_NORMS: True
+  TRACK_NORMS: False
   USE_TQDM: False
   USE_WANDB: False

@@ -112,16 +112,20 @@ class DSS(nn.Module):
         ret_str += str(self.output_layer)
         return ret_str
 
-    def compute_norms(self, L):
+    def compute_norms(self):
         """ Compute the norms of the first item of the kernels and of the matrics D
             of each DSS layer, for monitoring purposes
         """
-        
+
         norms = {}
         with torch.no_grad():
             for i, block in enumerate(self.dss_blocks):
-                k = block.kernel(L)
-                norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
+                k = block.kernel
+                #norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
+                kernel_norms = k.compute_norms()
+                norms.update(
+                    {k + '_{}'.format(i): v for k, v in kernel_norms.items()}
+                )
                 norms['norms/D_{}'.format(i)] = block.D.norm().item() / block.D.numel()
         return norms
 
@@ -146,6 +150,15 @@ class DSS(nn.Module):
     def initialize_layer_norms(self):
         for k in self.layer_norms.keys():
             self.layer_norms[k] = 0.
+
+    def compute_gradients(self, reduction='mean'):
+        grads = {}
+        for i, l in enumerate(self.dss_blocks):
+            layer_grads = l.compute_gradients(reduction)
+            grads.update(
+                {'gradients/dss_layer_{}/{}'.format(i, k): v for k, v in layer_grads.items()}
+            )
+        return grads
 
 
 

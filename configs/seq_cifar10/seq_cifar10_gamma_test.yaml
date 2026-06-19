@@ -1,29 +1,33 @@
-PROJECT: "seq_CIFAR10_exponential"
+PROJECT: "seq_CIFAR10_gamma"
 DATASET:
   NAME: sCIFAR10
   TRAIN_SIZE: 45000
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU 
-  ALPHA_MIN: 1.e-1
-  ALPHA_MAX: [10.]
+  ALPHA_MEAN: [-0.5] #[1.,2.,4.,8.]
+  ALPHA_STD: null
+  THETA_MEAN: [0.]
+  THETA_STD: 1.
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: 0.2
   ENCODING: linear
   INPUT_SIZE: 512
-  KERNEL_VERSION: exponential
-  N_LAYERS: 10
+  KERNEL_VERSION: gamma
+  N_LAYERS: 6
   NAME: DSS
   NORMALIZATION: layer_norm
   POOLING: average
   PRENORM: False
-  SEED: [1112] #[712,8,93,74,812]
+  SEED: [1112,0] #[712,8,93,74,812]
   USE_LENGTHS: False
 TRAIN:
   BATCH_SIZE: 50
   DISPLAY_EPOCH: True
   DISPLAY_EVERY: null
+  INSPECT_GRADIENTS: False
+  GET_GRADIENTS: True
   LOSS_FN: $torch.nn.CrossEntropyLoss
   LOSS_CONFIG: null
   METRICS: {'accuracy': $torchmetrics.Accuracy}
@@ -34,11 +38,18 @@ TRAIN:
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
     lr: [0.004]
-    weight_decay: 1.e-2
-  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
+    weight_decay: [0.01]
+  SCHEDULER: $torch.optim.lr_scheduler.SequentialLR
   SCHEDULER_CONFIG:
-    patience: 10
-    factor: 0.1
+    scheduler1: $torch.optim.lr_scheduler.LinearLR
+    scheduler1_config:
+      start_factor: 0.2
+      total_iters: 10
+    scheduler2: $torch.optim.lr_scheduler.CosineAnnealingLR
+    scheduler2_config:
+      T_max: 190
+      eta_min: 0.00001
+    milestones: 10
   TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False

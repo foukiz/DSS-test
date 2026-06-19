@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+import numpy as np
+
 import opt_einsum as oe
 
 from kernels import DSSKernel, GammaExpectationKernel, UniformExpectationKernel, ExponentialExpectationKernel, HippoSSKernel
@@ -85,6 +87,20 @@ class DSSLayer(nn.Module):
         y = self.linear(y.transpose(-1, -2)).transpose(-1, -2)  # (B H L)
 
         return y        # (B H L)
+    
+    def compute_gradients(self, reduction='mean'):
+        grads = {}
+        k = self.kernel
+        for name, t in k.named_parameters():
+            if t.grad is None: continue
+            grad = t.grad.detach().cpu().numpy()
+            if reduction == 'mean':
+                grads[name] = np.mean(np.abs(grad))
+            elif reduction == 'max':
+                grads[name] = np.max(np.abs(grad))
+            else:
+                raise ValueError("reduction {} is unknown ; valid options are 'mean', 'max'".format(reduction))
+        return grads
 
     @property
     def d_state(self):

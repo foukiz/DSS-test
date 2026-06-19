@@ -5,6 +5,7 @@ experiments.py
 tests.py
 hist_gamma.png
 generate_pathfinder.py
+generate_pathfinder_bis.py
 
 # Ignorer un dossier entier
 checkpoints/

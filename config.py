@@ -78,6 +78,20 @@ class Config:
         if not isinstance(optimizer, Optimizer):
             raise AttributeError("Error when trying to instantiate the torch scheduler ; "
                                  "optimizer has not been initialized yet")
+        if self.train['scheduler'].__name__ == 'SequentialLR':
+            schedulers = []
+            for k, v in self.train['scheduler_config'].items():
+                if k.startswith('scheduler') and not k.endswith('config'):
+                    sched = v(optimizer=optimizer, **self.train['scheduler_config'][k+'_config'])
+                    schedulers.append(sched)
+            #for i, s in enumerate(self.train['schedulers']):
+            #    sched = s(optimize=optimizer, **self.train['scheduler_config']['scheduler{}_config'.format(i+1)])
+            #    schedulers.append(sched)
+            if len(schedulers) > 2:
+                raise NotImplementedError("Error when trying to instantiate the SequentialLR scheduler ; "
+                                          "more than 2 schedulers not implemented yet")
+            self.train['scheduler'] = self.train['scheduler'](optimizer=optimizer, milestones=[self.train['scheduler_config']['milestones']], schedulers=schedulers)
+            return
         if not self.train['scheduler_config']: self.train['scheduler'] = self.train['scheduler'](optimizer=optimizer)
         else: self.train['scheduler'] = self.train['scheduler'](optimizer=optimizer, **self.train['scheduler_config'])
 

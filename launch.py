@@ -180,8 +180,6 @@ def launch(
         pass
     model = make_model(data_dim=input_dim, output_size=output_dim, **cfg.model, **kwargs).to(device)
 
-    print(f'\n{model}\n')
-
     cfg.instantiate_optimizer(params=model.parameters())
     cfg.instantiate_scheduler()
 

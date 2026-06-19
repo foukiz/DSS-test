@@ -54,19 +54,7 @@
             "args": [
                 "--config", "configs/copytask/debug_copy_task_dss.yaml",
                 "--use_tqdm",
-                "--use_wandb",
                 "--save_network"
-            ]
-        },
-        {
-            "name": "Test micro copy task S4",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/launch.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--config", "configs/copytask/debug_copy_task_S4.yaml",
-                "--use_tqdm"
             ]
         },
         {
@@ -92,6 +80,17 @@
             ]
         },
         {
+            "name": "Debug Image gamma test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_gamma_test.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
             "name": "Debug Image exponential",
             "type": "debugpy",
             "request": "launch",
@@ -99,6 +98,17 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/seq_cifar10/seq_cifar10_exponential.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Text gamma",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/imdb/imdb_gamma.yaml",
                 "--use_tqdm"
             ]
         },

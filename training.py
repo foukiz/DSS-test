@@ -19,6 +19,7 @@ def train(
         metrics=None,
         scheduler=None,
         get_gradients=False,
+        inspect_gradients=False,
         display_every=None,
         display_epoch=False,
         use_wandb=False,
@@ -44,6 +45,9 @@ def train(
 
     train_size = len(dataset.train_ds)
     n_batches = train_size // batch_size + (train_size % batch_size != 0)
+
+    if inspect_gradients:
+        torch.autograd.set_detect_anomaly(True)
 
     for epoch in range(n_epochs):
         if not use_tqdm: print("entering epoch {}".format(epoch+1))
@@ -87,10 +91,8 @@ def train(
             stat_val = evaluate(val_loader, model, loss_fn, metrics=metrics, kind='validation', torch_device=torch_device)
 
         if scheduler is not None:
-            if scheduler.__class__.__name__ == 'ReduceLROnPlateau':
-                scheduler.step(stat_val['val_loss'])
-            else:
-                scheduler.step()
+            if not validation: stat_val = None
+            scheduler_update(scheduler, stat_val=stat_val)
             stat_epoch["lr"] = optimizer.param_groups[0]['lr']
 
         if display_epoch:
@@ -107,7 +109,8 @@ def train(
             if hasattr(dataset, "naive_baseline"):
                 wandb_dic["CCE baseline"] = dataset.naive_baseline
             if track_norms:
-                norms = model.compute_norms(L=dataset.seq_length)
+                #norms = model.compute_norms(L=dataset.seq_length)
+                norms = model.compute_norms()
                 layer_norms = {'layer_norm/'+k: v for k, v in model.layer_norms.items()}
                 wandb_dic.update(norms)
                 wandb_dic.update(layer_norms)
@@ -119,7 +122,7 @@ def train(
 
     return model
 
-def training_step(batch_x, batch_y, batch_lengths, model, optimizer, loss_fn, metrics, torch_device=None, **kwargs):
+def training_step(batch_x, batch_y, batch_lengths, model, optimizer, loss_fn, metrics, get_gradients=False, torch_device=None, **kwargs):
 
     model.train()
     batch_x, batch_y = batch_x.to(torch_device), batch_y.to(torch_device).view(-1)
@@ -129,6 +132,7 @@ def training_step(batch_x, batch_y, batch_lengths, model, optimizer, loss_fn, me
     # update weights
     optimizer.zero_grad()
     loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
     optimizer.step()
 
     #model.apply_weight_constraints_()
@@ -139,12 +143,17 @@ def training_step(batch_x, batch_y, batch_lengths, model, optimizer, loss_fn, me
         metrics_values = compute_metrics(metrics, predictions, batch_y, torch_device=torch_device)
         stat_batch.update(metrics_values)
 
+    if get_gradients:
+        grads = model.compute_gradients()
+        stat_batch.update(grads)
+
     return stat_batch
 
 
 def batch_update(stat_epoch, stat_batch, batch_idx):
+    
     for k in stat_batch.keys():
-        if k not in stat_epoch.keys(): raise KeyError("key {} is not an epoch statistic".format(k))
+        if k not in stat_epoch.keys(): stat_epoch[k] = 0.
         # update moving average
         stat_epoch[k] = (batch_idx * stat_epoch[k] + stat_batch[k]) / (batch_idx + 1)
     return stat_epoch
@@ -201,21 +210,17 @@ def compute_metrics(metrics, batch_preds, batch_y, torch_device=None):
     return metrics_values
 
 
-def get_layer_gradients(layer, layer_name='', operation='average_norm'):
-    gradients = {}
-    for name, p in layer._parameters.items():
-        if p is None: continue
-        grad = p.grad
-        if grad is None: grad = torch.tensor(0., dtype=p.dtype)
-        if operation == 'average_norm':
-            gradients['gradients/' + layer_name + '_' +name] = torch.mean(torch.abs(grad))
-        else: raise ValueError("operation {} is unknown. Allowed operations are \"average_norm\"".format(operation))
-        # TODO autres opérations éventuelles
-    return gradients
-
 
 def display_train_data(round=3, **stats):
     display_str = ""
     for k, v in stats.items():
         display_str += "\t  {}: {}".format(k, np.round(v, round))
     print(display_str)
+
+
+
+def scheduler_update(scheduler, stat_val=None):
+    if scheduler.__class__.__name__ == 'ReduceLROnPlateau':
+        scheduler.step(stat_val['val_loss'])
+    else:
+        scheduler.step()

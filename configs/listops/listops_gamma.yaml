@@ -10,10 +10,10 @@ DATASET:
   VAL_SIZE: 2000
   GENERATE: False
 MODEL:
-  ALPHA_MEAN: [2.] #[1.,2.,4.,8.]
+  ALPHA_MEAN: [1.,2.,4.,8.]
   ALPHA_STD: [0.5]
   THETA_MEAN: [4.]
-  THETA_STD: 0.5
+  THETA_STD: 1.
   ACTIVATION: $torch.nn.GELU
   BIAS: True
   BIDIRECTIONAL: False
@@ -26,7 +26,7 @@ MODEL:
   NORMALIZATION: [batch_norm]
   POOLING: average
   PRENORM: False
-  SEED: [1112,0,712,8,93] #[712,8,93,74,812]
+  SEED: [1112,0,712] #[712,8,93,74,812]
   USE_LENGTHS: True
 TRAIN:
   BATCH_SIZE: 50
@@ -42,7 +42,7 @@ TRAIN:
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
     lr: [0.001]
-    weight_decay: [0.01,0.]
+    weight_decay: [0.01]
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
     patience: 5
