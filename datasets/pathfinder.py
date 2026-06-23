@@ -1,14 +1,15 @@
 import torch
 from torch.utils.data import TensorDataset
+from torchvision import datasets, transforms
+from einops.layers.torch import Rearrange
 
-import matplotlib.pyplot as plt
+import os
 import numpy as np
 
 from PIL import Image
-from PIL import ImageDraw
 
-import cv2
-cv2.useOptimized()
+from pathlib import Path
+
 
 try:
     from .dataset import Dataset
@@ -16,39 +17,33 @@ except ImportError:
     from dataset import Dataset
 
 
+
+
+DATA_DIR = 'data/pathfinder_data'
+IMGS_DIR = Path(DATA_DIR) / "imgs/0"
+
+
+
 class Pathfinder(Dataset):
     
-    def __init__(
-        self,
-        data_dir,
-        split,
-        **kwargs
-    ):
-        """ Class to generate the Pathfinder dataset with some properties
-            This dataset is used for the 'Pathfinder' benchmark in LRA
-        """
-
-        self.data_dir = data_dir
-        self.split = split
-
-        data = torch.load(f'{data_dir}/pathfinder_{split}.pt')
-        super().__init__(data['images'], data['labels'])
+    def __init__(self, **kwargs):
+        seq_length = self.image_size * self.channels
+        train_size = kwargs.pop('train_size', 160000)
+        val_size = kwargs.pop('val_size', 20000)
+        test_size = kwargs.pop('test_size', 20000)
+        super().__init__(train_size, val_size, test_size, seq_length, **kwargs)
 
     @property
     def input_dimension(self):
-        return (self._input_dimension,)
-
-    @input_dimension.setter
-    def input_dimension(self, value):
-        self._input_dimension = value
+        return (1,)
 
     @property
     def input_flat_dimension(self):
-        return self._input_dimension
+        return self.input_dimension[0]
 
     @property
     def image_size(self):
-        return (self._input_dimension,)
+        return 32 * 32
 
     @property
     def channels(self):
@@ -58,9 +53,9 @@ class Pathfinder(Dataset):
     def num_outputs(self):
         return 2
 
-    @num_outputs.setter
-    def num_outputs(self, value):
-        self._output_dimension = value
+    #@num_outputs.setter
+    #def num_outputs(self, value):
+    #    self._output_dimension = value
 
     @property
     def test_size(self):
@@ -84,5 +79,81 @@ class Pathfinder(Dataset):
         return self.val_ds
     
     def import_dataset(self):
-        #TODO
-        pass
+        
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=0.5, std=0.5),
+            Rearrange("1 h w -> (h w) 1")
+        ])
+
+        print("-" * 43 + f" {type(self).__name__} loaded " + "-" * 43)
+
+        pathfinder_ds = PathfinderDataset(transforms=transform)
+
+        gen = torch.Generator().manual_seed(42)
+        train_ds, val_ds, test_ds = torch.utils.data.random_split(
+            pathfinder_ds,
+            [self.tr_size, self.va_size, self.te_size],
+            generator=gen,
+        )
+
+        print("-" * 43 + f" {type(self).__name__} loaded " + "-" * 43)
+
+        return train_ds, val_ds, test_ds
+
+
+
+class PathfinderDataset(torch.utils.data.Dataset):
+
+    def __init__(self, transforms) -> None:
+        super().__init__()
+        self.transforms = transforms
+        self.data_dir = DATA_DIR
+        self.img_dir = IMGS_DIR
+
+        if os.path.exists(self.data_dir + "/data_pairs.npy"):
+            self.pairs = np.load(self.data_dir + "/data_pairs.npy", allow_pickle=True)
+
+        else:
+            self.pairs = process_raw_data(save=True)
+
+    def __len__(self):
+        return len(self.pairs)
+
+    def __getitem__(self, index):
+        path, target = self.pairs[index]
+        with open(self.img_dir / path, "rb") as f:
+            sample = Image.open(f).convert("L")  # Open in grayscale
+        if self.transforms is not None:
+            sample = self.transforms(sample)
+        return sample, int(target)
+
+
+
+
+def process_raw_data(save=True):
+    """ process les données brutes pour stocker des paires (image_path, label) dans un fichier np.save
+
+        les images sont au format "sample_X.png"
+    """
+
+    samples = []
+
+    metadata = np.load(DATA_DIR + "/metadata/0.npy", allow_pickle=True)
+    for line in metadata:
+        samples.append(
+            (line[1], int(line[3]))
+        )
+
+    if save:
+        np.save(DATA_DIR + "/data_pairs.npy", samples)
+
+    return samples
+
+
+
+
+if __name__ == "__main__":
+    ds = Pathfinder()
+    slice = ds.test_ds.__getitem__(0)
+    print(slice)

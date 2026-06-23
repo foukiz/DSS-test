@@ -35,7 +35,7 @@ class sCIFAR10(Dataset):
 
     @property
     def input_flat_dimension(self):
-        return 1
+        return self._input_dimension
 
     @property
     def image_size(self):

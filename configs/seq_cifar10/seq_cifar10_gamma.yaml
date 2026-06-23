@@ -5,17 +5,17 @@ DATASET:
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU
-  ALPHA_MIN: [-0.1]
-  ALPHA_MAX: [2.]
-  THETA_MIN: [0.1]
-  THETA_MAX: [10.]
+  ALPHA_MIN: [-0.9]      ### PARAM TEST ###
+  ALPHA_MAX: [1.]      ### PARAM TEST ###
+  THETA_MIN: [0.01]     ### PARAM TEST ###
+  THETA_MAX: [2.]       ### PARAM TEST ###
   BIAS: True
   BIDIRECTIONAL: False
-  DROPOUT: 0.       ### PARAM TEST ###
+  DROPOUT: 0.2
   ENCODING: linear
   INPUT_SIZE: 512
   KERNEL_VERSION: gamma
-  N_LAYERS: 6    ### PARAM TEST ###
+  N_LAYERS: 10
   NAME: DSS
   NORMALIZATION: layer_norm
   POOLING: average
@@ -53,6 +53,7 @@ TRAIN:
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
     patience: 10
+    factor: 0.6             ### PARAM TEST ###
 #  SCHEDULER: $torch.optim.lr_scheduler.StepLR
 #  SCHEDULER_CONFIG:
 #    step_size: 1.

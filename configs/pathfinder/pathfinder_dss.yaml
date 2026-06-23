@@ -1,0 +1,43 @@
+PROJECT: "pathfinder_gamma"
+DATASET:
+  NAME: Pathfinder
+  TEST_SIZE: 20000
+  TRAIN_SIZE: 160000
+  VAL_SIZE: 20000
+MODEL:
+  ACTIVATION: $torch.nn.GELU
+  BIAS: True
+  BIDIRECTIONAL: False
+  DROPOUT: 0.1
+  ENCODING: linear
+  INPUT_SIZE: 256
+  KERNEL_VERSION: exp
+  N_LAYERS: 6
+  NAME: DSS
+  NORMALIZATION: batch_norm
+  POOLING: last
+  PRENORM: True
+  SEED: [1112] #[712,8,93,74,812]
+  USE_LENGTHS: False
+TRAIN:
+  BATCH_SIZE: 100
+  DISPLAY_EPOCH: True
+  DISPLAY_EVERY: null
+  LOSS_FN: $torch.nn.CrossEntropyLoss  #$torch.nn.BCEWithLogitsLoss  #BCE if the output of the model is unidimensional
+  LOSS_CONFIG: null
+  METRICS: {'accuracy': $torchmetrics.Accuracy} #{'accuracy': $torchmetrics.classification.BinaryAccuracy}
+  METRICS_CONFIG:
+    task: multiclass
+    num_classes: 2
+  N_EPOCHS: 200
+  OPTIMIZER: $torch.optim.AdamW
+  OPTIMIZER_CONFIG:
+    lr: [0.004]
+    weight_decay: 0.
+  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
+  SCHEDULER_CONFIG:
+    patience: 10
+  TORCH_DEVICE: cpu
+  TRACK_NORMS: True
+  USE_TQDM: False
+  USE_WANDB: False

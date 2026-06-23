@@ -113,17 +113,6 @@
             ]
         },
         {
-            "name": "Debug Text gamma",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/launch.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--config", "configs/imdb/imdb_gamma.yaml",
-                "--use_tqdm"
-            ]
-        },
-        {
             "name": "Debug Retrieval gamma",
             "type": "debugpy",
             "request": "launch",
@@ -131,6 +120,28 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/aan/aan_gamma.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Pathfinder gamma",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/pathfinder/pathfinder_gamma.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Pathfinder DSS (exp)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/pathfinder/pathfinder_dss.yaml",
                 "--use_tqdm"
             ]
         },

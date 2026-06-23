@@ -14,6 +14,8 @@ models/
 wandb/
 graphs/
 images/
+snakes/
+datasets/generate_pathfinder/
 
 # Ignorer les fichiers de données
 data/
