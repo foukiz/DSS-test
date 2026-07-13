@@ -44,6 +44,6 @@ TRAIN:
   SCHEDULER_CONFIG:
     patience: 5
   TORCH_DEVICE: cpu
-  TRACK_NORMS: True
+  TRACK_NORMS: False
   USE_TQDM: False
   USE_WANDB: False

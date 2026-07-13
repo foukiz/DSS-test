@@ -1,4 +1,4 @@
-PROJECT: "AAN_gamma"
+PROJECT: "AAN_dss"
 DATASET:
   NAME: AAN
   MAX_LEN: 4000
@@ -6,18 +6,14 @@ DATASET:
   TRAIN_SIZE: 18089
   VAL_SIZE: 17436
 MODEL:
-  ALPHA_MEAN: [3.,4.]
-  ALPHA_STD: [0.5]
-  THETA_MEAN: [4.]
-  THETA_STD: 0.5
   ACTIVATION: $torch.nn.GELU
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: 0.
   ENCODING: embedding
   INPUT_SIZE: 256
-  KERNEL_VERSION: gamma
-  N_LAYERS: 6
+  KERNEL_VERSION: exp
+  N_LAYERS: 1
   NAME: DSS
   NORMALIZATION: batch_norm
   POOLING: average
@@ -25,7 +21,7 @@ MODEL:
   SEED: [1112] #[712,8,93,74,812]
   USE_LENGTHS: True
 TRAIN:
-  BATCH_SIZE: 64
+  BATCH_SIZE: 2
   DISPLAY_EPOCH: True
   DISPLAY_EVERY: null
   LOSS_FN: $torch.nn.CrossEntropyLoss  #$torch.nn.BCEWithLogitsLoss  #BCE if the output of the model is unidimensional
@@ -43,6 +39,6 @@ TRAIN:
   SCHEDULER_CONFIG:
     patience: 20
   TORCH_DEVICE: cpu
-  TRACK_NORMS: True
+  TRACK_NORMS: False
   USE_TQDM: False
   USE_WANDB: False

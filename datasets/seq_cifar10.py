@@ -1,10 +1,19 @@
 import torch
 import numpy as np
 from torchvision import datasets, transforms
+from torch.utils.data import TensorDataset
+
 try:
     from .dataset import Dataset
 except ImportError:
     from dataset import Dataset
+
+import pickle as pkl
+import os
+
+
+
+DATA_DIR = 'data/cifar10_data'
 
 
 class sCIFAR10(Dataset):
@@ -35,7 +44,7 @@ class sCIFAR10(Dataset):
 
     @property
     def input_flat_dimension(self):
-        return self._input_dimension
+        return self.input_dimension[0]
 
     @property
     def image_size(self):
@@ -71,31 +80,71 @@ class sCIFAR10(Dataset):
         return self.val_ds
 
     def import_dataset(self):
-        #torch.manual_seed(42)
-        gen = torch.Generator().manual_seed(42)
-
-        # this transform allows to download the cifar10 images in the flattened shape
-        transform = transforms.Compose([
-            transforms.Grayscale(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=122.6/255.0, std=61.0/255.0),
-            transforms.Lambda(lambda x: x.view(1, 1024).t())
-        ])
 
         print("-" * 43 + f" Loading {type(self).__name__} " + "-" * 43)
 
-        train_ds, val_ds = torch.utils.data.random_split(
-            datasets.CIFAR10("data/cifar10_data", train=True, download=True, transform=transform),
-            [self.train_size, self.val_size],
-            generator=gen
-        )
-        test_ds = datasets.CIFAR10("data/cifar10_data", train=False, download=True, transform=transform)
+        if not os.path.exists(DATA_DIR + "/data.pkl"):
+            process_data(train_size=self.train_size, save=True)
+        with open(DATA_DIR + "/data.pkl", "rb") as f:
+            data = pkl.load(f)
+            train_ds = TensorDataset(*data["train_ds"])
+            val_ds = TensorDataset(*data["val_ds"])
+            test_ds = TensorDataset(*data["test_ds"])
 
         print("-" * 43 + f" {type(self).__name__} loaded " + "-" * 43)
 
         return train_ds, val_ds, test_ds
-    
 
+
+
+
+def process_data(train_size=45000, save=True):
+    # this transform allows to download the cifar10 images in the flattened shape
+
+    train_val_samples = datasets.CIFAR10("data/cifar10_data", train=True, download=True)
+    test_samples = datasets.CIFAR10("data/cifar10_data", train=False, download=True)
+
+    gen = torch.Generator().manual_seed(42)
+    permutation = torch.randperm(len(train_val_samples), generator=gen)
+    train_samples = [train_val_samples[i] for i in permutation[:train_size]]
+    val_samples = [train_val_samples[i] for i in permutation[train_size:]]
+    test_samples = [test_samples[i] for i in range(len(test_samples))]
+
+    print("converting train images to tensors...")
+    x_train, y_train = cifar2tensor(train_samples)
+    print("converting validation images to tensors...")
+    x_val, y_val = cifar2tensor(val_samples)
+    print("converting test images to tensors...")
+    x_test, y_test = cifar2tensor(test_samples)
+    print("done.")
+
+    data = {
+        "train_ds": (x_train, y_train),
+        "val_ds": (x_val, y_val),
+        "test_ds": (x_test, y_test)
+    }
+    if save:
+        with open(DATA_DIR + "/data.pkl", "wb") as f: pkl.dump(data, f)
+
+    return data
+
+
+def cifar2tensor(samples):
+    transform = transforms.Compose([
+        transforms.Grayscale(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=122.6/255.0, std=61.0/255.0),
+        transforms.Lambda(lambda x: x.view(1, 1024).t())
+    ])
+
+    N = len(samples)
+    x = torch.empty((N, 1024, 1), dtype=torch.float32)
+    y = torch.empty((N,), dtype=torch.long)
+    for i, (data, target) in enumerate(samples):
+        x[i] = transform(data)
+        y[i] = int(target)
+
+    return x, y
 
 
 

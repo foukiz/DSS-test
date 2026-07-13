@@ -1,4 +1,4 @@
-PROJECT: "pathfinder_gamma"
+PROJECT: "pathfinder_gamma_mgf"
 DATASET:
   NAME: Pathfinder
   TEST_SIZE: 20000
@@ -15,7 +15,7 @@ MODEL:
   DROPOUT: 0.1
   ENCODING: linear
   INPUT_SIZE: 256
-  KERNEL_VERSION: gamma
+  KERNEL_VERSION: gamma_mgf
   N_LAYERS: 10
   NAME: DSS
   NORMALIZATION: layer_norm   
@@ -36,17 +36,18 @@ TRAIN:
   N_EPOCHS: 250
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [0.001]              #### test parametre ####
+    lr: [0.0005]
     weight_decay: 0.
 #  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
 #  SCHEDULER_CONFIG:
 #    patience: 10
+#    factor: 0.2
 #    min_lr: 0.00001
   SCHEDULER: $torch.optim.lr_scheduler.CosineAnnealingLR
   SCHEDULER_CONFIG:
-    T_max: 200                #### test parametre ####
+    T_max: 250                #### test parametre ####
     eta_min: 0.00001
   TORCH_DEVICE: cpu
-  TRACK_NORMS: False
+  TRACK_NORMS: True
   USE_TQDM: False
   USE_WANDB: False

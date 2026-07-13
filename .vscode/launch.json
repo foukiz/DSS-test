@@ -35,7 +35,7 @@
             ]
         },
         {
-            "name": "Debug seq_cifar10",
+            "name": "Debug seq_cifar10 DSS",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
@@ -80,13 +80,24 @@
             ]
         },
         {
-            "name": "Debug Image gamma test",
+            "name": "Debug Image gamma MGF",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
             "console": "integratedTerminal",
             "args": [
-                "--config", "configs/seq_cifar10/seq_cifar10_gamma_test.yaml",
+                "--config", "configs/seq_cifar10/seq_cifar10_gamma_mgf.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Image myown",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_myownk.yaml",
                 "--use_tqdm"
             ]
         },
@@ -120,6 +131,17 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/aan/aan_gamma.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Retrieval DSS",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/aan/aan_dss.yaml",
                 "--use_tqdm"
             ]
         },

@@ -1,5 +1,7 @@
+from matplotlib.pylab import beta
 import torch
 import torch.nn as nn
+import torch.nn.init as init
 import numpy as np
 
 import math
@@ -101,7 +103,7 @@ class DSSKernel(nn.Module):
             dt_Lambda = self.log_dt.exp().unsqueeze(-1) * Lambda             # [H N]
 
         P = dt_Lambda.unsqueeze(-1) * torch.arange(L, device=W.device)       # [H N L]
-        
+
         if self.version in ['softmax']:
             # fast softmax using structure of P
             # see Appendix A.2 in https://arxiv.org/abs/2203.14343
@@ -127,6 +129,50 @@ class DSSKernel(nn.Module):
 
 
 
+class MyOwnLittleKernel(nn.Module):
+
+    def __init__(
+        self,
+        H,
+        dt_min=1e-3,
+        dt_max=1e-1,
+        **kwargs
+    ):
+        #assert (alpha_mean > 0 or alpha_mean is None) and alpha_std >= 0 and theta_mean > 0 and theta_std >= 0, "alpha_mean, alpha_std, theta_mean, theta_std must be positive and alpha_std >= 0, theta_std >= 0"
+        super().__init__()
+        self.H = H
+
+        log_dt = math.log(dt_min) + torch.rand(H) * (math.log(dt_max) - math.log(dt_min))
+        self.register_parameter('log_dt', torch.nn.Parameter(log_dt))
+
+        self.alpha = nn.Parameter(torch.empty(H))
+        torch.nn.init.normal_(self.alpha)
+
+        self.beta = nn.Parameter(torch.empty(H))
+        torch.nn.init.normal_(self.beta)
+
+        self.gamma = nn.Parameter(torch.empty(H))
+        torch.nn.init.normal_(self.gamma)
+
+        self.theta1 = nn.Parameter(torch.empty(H))
+        torch.nn.init.normal_(self.theta1)
+
+        self.theta2 = nn.Parameter(torch.empty(H))
+        torch.nn.init.normal_(self.theta2)
+
+    def forward(self, L, state=None):
+        Delta = self.log_dt.exp().unsqueeze(0)                                   # [1 H]
+        alpha = self.alpha.unsqueeze(0)                                          # [1 H]
+        beta = self.beta.unsqueeze(0)                                            # [1 H]
+        gamma = self.gamma.unsqueeze(0)                                          # [1 H]
+        theta1 = self.theta1.unsqueeze(0)                                          # [1 H]
+        theta2 = self.theta2.unsqueeze(0)                                          # [1 H]
+
+        j = torch.arange(L, device=self.alpha.device, dtype=self.alpha.dtype).unsqueeze(-1)
+        k = alpha + beta * Delta * j * (torch.cos(theta1 * j * Delta) + torch.sin(theta1 * j * Delta)) + gamma * (Delta * j)**2 * (torch.cos(theta2 * j * Delta) - torch.sin(theta2 * j * Delta))    # [L H]
+
+        return k.transpose(0,1)                      # [H L]
+
 
 class GammaExpectationKernel(nn.Module):
     """ Kernel computed as the expectation of (e^{Delta * X} - 1) / X * e^{Delta X j} where X
@@ -139,11 +185,11 @@ class GammaExpectationKernel(nn.Module):
         H,
         dt_min=1e-3,
         dt_max=1e-1,
-        alpha_min=4.0,
-        alpha_max=1.0,
-        theta_min=1.0,
-        theta_max=0.5,
-        epsilon=1e-4,           # avoids division by 0
+        alpha_mean=0.0,
+        alpha_std=0.1,
+        theta_mean=1.0,
+        theta_std=1.,
+        epsilon=1e-3,           # avoids division by 0
         **kwargs
     ):
         #assert (alpha_mean > 0 or alpha_mean is None) and alpha_std >= 0 and theta_mean > 0 and theta_std >= 0, "alpha_mean, alpha_std, theta_mean, theta_std must be positive and alpha_std >= 0, theta_std >= 0"
@@ -152,25 +198,24 @@ class GammaExpectationKernel(nn.Module):
         self.epsilon = epsilon
 
         #if alpha_std is None: alpha_std = 10**(math.log10(abs(np.exp(alpha_mean))) - 1.)
-        log_dt, log_alpha, log_theta = self.init(H, dt_min, dt_max, alpha_min, alpha_max, theta_min, theta_max)
+        log_dt, log_alpha, log_theta = self.init(H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std)
         self.register_parameter('log_dt', torch.nn.Parameter(log_dt))
-        #self.register_parameter('log_alpha', torch.nn.Parameter(alpha.log()))
-        #self.register_parameter('log_theta', torch.nn.Parameter(theta.log()))
         self.register_parameter('log_alpha', torch.nn.Parameter(log_alpha))
         self.register_parameter('log_theta', torch.nn.Parameter(log_theta))
         self.d = nn.Parameter(torch.ones(H))                        # [H]
 
-    def init(self, H, dt_min, dt_max, alpha_min, alpha_max, theta_min, theta_max):
+    def init(self, H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std):
+        assert (alpha_mean + 1.) > self.epsilon, f"alpha_mean should be higher than epsilon = {self.epsilon}"
         log_dt = math.log(dt_min) + torch.rand(H) * (math.log(dt_max) - math.log(dt_min))
-        log_alpha = math.log(alpha_min + 1.) + torch.rand(H) * (math.log(alpha_max + 1.) - math.log(alpha_min + 1.))
-        log_theta = math.log(theta_min) + torch.rand(H) * (math.log(theta_max) - math.log(theta_min))
+        #log_alpha = math.log(alpha_min + 1.) + torch.rand(H) * (math.log(alpha_max + 1.) - math.log(alpha_min + 1.))
+        #log_theta = math.log(theta_min) + torch.rand(H) * (math.log(theta_max) - math.log(theta_min))
         #alpha = torch.nn.init.trunc_normal_(
         #    torch.empty(H), mean=alpha_mean, std=alpha_std, a=self.epsilon, b=float('inf'))
-        #log_alpha = torch.nn.init.trunc_normal_(
-        #    torch.empty(H), mean=alpha_min, std=alpha_max, a=float('-inf'), b=0)
-        #theta = torch.nn.init.trunc_normal_(
-        #    torch.empty(H), mean=theta_mean, std=theta_std, a=self.epsilon, b=float('inf'))
-        #log_theta = torch.nn.init.normal_(torch.empty(H), mean=theta_mean, std=theta_std)
+        alpha_mean_p1 = alpha_mean + 1.
+        log_alpha = torch.nn.init.trunc_normal_(
+            torch.empty(H), mean=alpha_mean_p1, std=alpha_std, a=self.epsilon, b=float('inf')).log()
+        log_theta = torch.nn.init.trunc_normal_(
+            torch.empty(H), mean=theta_mean, std=theta_std, a=self.epsilon, b=float('inf')).log()
 
         return log_dt, log_alpha, log_theta
 
@@ -197,10 +242,10 @@ class GammaExpectationKernel(nn.Module):
     def Order2DL_forward(self, L, state=None):
         raise NotImplementedError
 
-    def compute_norms(self):
+    def compute_norms(self, norm=1):
         with torch.no_grad():
-            alpha_norm = self.log_alpha.exp().norm().item() / self.log_alpha.numel()
-            theta_norm = self.log_theta.exp().norm().item() / self.log_theta.numel()
+            alpha_norm = (self.log_alpha.exp() - 1.).norm(norm).item() / self.log_alpha.numel()
+            theta_norm = self.log_theta.exp().norm(norm).item() / self.log_theta.numel()
             norms = {'norms/alpha': alpha_norm, 'norms/theta': theta_norm}
         return norms
 
@@ -263,6 +308,64 @@ class ExponentialExpectationKernel(nn.Module):
             norms = {'norms/alpha': alpha_norm}
         return norms
 
+
+    
+class GammaMGFKernel(nn.Module):
+
+    def __init__(
+        self,
+        H,
+        dt_min=1e-3,
+        dt_max=1e-1,
+        alpha_mean=0.0,
+        alpha_std=0.1,
+        theta_mean=1.0,
+        theta_std=1.,
+        epsilon=1e-3,           # avoids division by 0
+        **kwargs
+    ):
+        #assert (alpha_mean > 0 or alpha_mean is None) and alpha_std >= 0 and theta_mean > 0 and theta_std >= 0, "alpha_mean, alpha_std, theta_mean, theta_std must be positive and alpha_std >= 0, theta_std >= 0"
+        super().__init__()
+        self.H = H
+        self.epsilon = epsilon
+
+        #if alpha_std is None: alpha_std = 10**(math.log10(abs(np.exp(alpha_mean))) - 1.)
+        log_dt, log_alpha, log_theta = self.init(H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std)
+        self.register_parameter('log_dt', torch.nn.Parameter(log_dt))
+        self.register_parameter('log_alpha', torch.nn.Parameter(log_alpha))
+        self.register_parameter('log_theta', torch.nn.Parameter(log_theta))
+        self.d = nn.Parameter(torch.ones(H))                        # [H]
+
+    def init(self, H, dt_min, dt_max, alpha_mean, alpha_std, theta_mean, theta_std):
+        assert (alpha_mean + 1.) > self.epsilon, f"alpha_mean should be higher than epsilon = {self.epsilon}"
+        log_dt = math.log(dt_min) + torch.rand(H) * (math.log(dt_max) - math.log(dt_min))
+        log_alpha = torch.nn.init.trunc_normal_(
+            torch.empty(H), mean=alpha_mean, std=alpha_std, a=self.epsilon, b=float('inf')).log()
+        log_theta = torch.nn.init.trunc_normal_(
+            torch.empty(H), mean=theta_mean, std=theta_std, a=self.epsilon, b=float('inf')).log()
+
+        return log_dt, log_alpha, log_theta
+
+    def forward(self, L, state=None):
+        Delta = self.log_dt.exp().unsqueeze(0)                                   # [1 H]
+        alpha = self.log_alpha.exp().unsqueeze(0) + self.epsilon                 # [1 H]
+        theta = self.log_theta.exp().unsqueeze(0) + self.epsilon                 # [1 H]
+        d = self.d.unsqueeze(0)                                                  # [1 H]
+
+        # implémentation numériquement stable du kernel gamma:
+        seq = torch.arange(L, device=theta.device, dtype=theta.dtype).unsqueeze(-1) # [L 1]
+        mgf = (1 + Delta * seq * theta).pow(-alpha)    # [L H]
+
+        k = d * mgf                                     # [L H]
+
+        return k.transpose(0,1)                      # [H L]
+    
+    def compute_norms(self, norm=1):
+        with torch.no_grad():
+            alpha_norm = (self.log_alpha.exp() - 1.).norm(norm).item() / self.log_alpha.numel()
+            theta_norm = self.log_theta.exp().norm(norm).item() / self.log_theta.numel()
+            norms = {'norms/alpha': alpha_norm, 'norms/theta': theta_norm}
+        return norms
 
 
 

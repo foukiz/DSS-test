@@ -5,16 +5,12 @@ DATASET:
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU
-  ALPHA_MEAN: [1.]
-  ALPHA_STD: [0.1]
-  THETA_MEAN: [1.]      #### test parameter ####
-  THETA_STD: [0.1]        #### test parameter ####
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: [0.2]
   ENCODING: linear
   INPUT_SIZE: 512
-  KERNEL_VERSION: gamma
+  KERNEL_VERSION: myown
   N_LAYERS: 10
   NAME: DSS
   NORMALIZATION: layer_norm
@@ -34,7 +30,7 @@ TRAIN:
   METRICS_CONFIG:
     task: multiclass
     num_classes: 10
-  N_EPOCHS: 300               #### test parametre ####
+  N_EPOCHS: 200
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
     lr: [0.004]
@@ -60,6 +56,6 @@ TRAIN:
 #    step_size: 1.
 #    gamma: 0.98
   TORCH_DEVICE: cpu
-  TRACK_NORMS: True
+  TRACK_NORMS: False
   USE_TQDM: False
   USE_WANDB: False

@@ -5,15 +5,19 @@ import numpy as np
 
 import opt_einsum as oe
 
-from kernels import DSSKernel, GammaExpectationKernel, UniformExpectationKernel, ExponentialExpectationKernel, HippoSSKernel
+from einops import rearrange
+from flax.linen.initializers import lecun_normal
 
+from kernels import DSSKernel, GammaExpectationKernel, GammaMGFKernel, UniformExpectationKernel, ExponentialExpectationKernel, HippoSSKernel, MyOwnLittleKernel
+
+from utils import init_VinvB
 
 
 
 
 class DSSLayer(nn.Module):
 
-    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'uniform', 'exponential']
+    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'gamma_mgf', 'uniform', 'exponential', 'myown']
 
     def __init__(
         self,
@@ -48,6 +52,10 @@ class DSSLayer(nn.Module):
             self.kernel = UniformExpectationKernel(self.h, **kwargs)
         elif version == 'exponential':
             self.kernel = ExponentialExpectationKernel(self.h, **kwargs)
+        elif version == 'gamma_mgf':
+            self.kernel = GammaMGFKernel(self.h, **kwargs)
+        elif version == 'myown':
+            self.kernel = MyOwnLittleKernel(self.h, **kwargs)
         #self.bias = bias
 
         # should have been instantiated already
@@ -109,7 +117,7 @@ class DSSLayer(nn.Module):
     @property
     def d_output(self):
         return self.h
-    
+
 
 
 class S4Layer(DSSLayer):
@@ -144,6 +152,64 @@ class S4Layer(DSSLayer):
 
 
 
+class S5Layer(nn.Module):
+
+    def __init__(
+        self,
+        input_size,
+        state_size,
+        Lambda_re_init,
+        Lambda_im_init,
+        V,
+        Vinv,
+        C_init,
+        discretization,
+        dt_min,
+        dt_max,
+        conj_sym=True,
+        clip_eigs=False,
+        bidirectional=False,
+        step_rescale=1.0
+    ):
+        super().__init__()
+        
+         # ---------- Hyperparamètres ----------
+        self.H = input_size
+        self.P = state_size
+        self.C_init = C_init
+        self.discretization = discretization
+        self.dt_min = dt_min
+        self.dt_max = dt_max
+        self.conj_sym = conj_sym
+        self.clip_eigs = clip_eigs
+        self.bidirectional = bidirectional
+        self.step_rescale = step_rescale
+
+        # ---------- Constantes ----------
+        self.register_buffer("V", V)
+        self.register_buffer("Vinv", Vinv)
+
+        # ---------- Paramètres ----------
+        self.Lambda_re = nn.Parameter(Lambda_re_init.clone())
+        self.Lambda_im = nn.Parameter(Lambda_im_init.clone())
+
+        if conj_sym:
+            local_P = 2 * state_size
+        else:
+            local_P = state_size
+        
+        B_init = lecun_normal()
+        B_shape = (local_P, self.H)
+
+        B = init_VinvB(B_init, rng, self.H, self.Vinv)
+        self.B = nn.Parameter(B)
+
+
+    def forward(self, u):
+        raise NotImplementedError("S5Layer is not implemented yet")
+
+
+
 
 
 class InputEncoder(nn.Module):
@@ -173,6 +239,7 @@ class InputEncoder(nn.Module):
 
     def forward(self, x):
         return self.layer(x)
+
 
 
 
@@ -211,6 +278,36 @@ class TopPooling(nn.Module):
             x = restrict(x)
 
         return x
+    
+
+
+class RetrievalHead(nn.Module):
+
+    def __init__(self, input_size, output_size, activation='gelu'):
+        super().__init__()
+        if activation == 'gelu':
+            activation_fn = nn.GELU()
+        elif activation == 'relu':
+            activation_fn = nn.ReLU()
+        else:
+            raise NotImplementedError(f"Activation {activation} not implemented for RetrievalHead")
+        
+        self.classifier = nn.Sequential(
+            nn.Linear(4*input_size, input_size),
+            activation_fn,
+            nn.Linear(input_size, output_size),
+        )
+
+    def forward(self, x):
+        """ x : (2*B, H)
+        """
+        x = rearrange(x, '(z b) d -> z b d', z=2)
+        x1, x2 = x[0], x[1]
+        features = torch.cat([x1, x2, x1-x2, x1*x2], dim=-1)
+        logits = self.classifier(features)
+
+        return logits
+
 
 
 class Normalization(nn.Module):

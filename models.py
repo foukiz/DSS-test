@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 import opt_einsum as oe
 
-from layers import DSSLayer, S4Layer, TopPooling, InputEncoder, Normalization
+from layers import DSSLayer, S4Layer, TopPooling, InputEncoder, Normalization, RetrievalHead
 from transformer_layers import EncoderLayer, DecoderLayer, PositionalEncoding
 
 
@@ -34,17 +34,12 @@ class DSS(nn.Module):
         prenorm=False,
         residual=True,
         pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
+        retrieval=False,
         use_lengths=False,
         track_norms=False,
         seed=None,
         **kwargs
     ):
-        #assert n_layers > 0, (
-        #    f"DSS model should have at least one core dss layer, found n_layers = {n_layers}")
-        #if seed:
-        #    torch.manual_seed(seed)
-        #    if torch.cuda.is_available():
-        #        torch.cuda.manual_seed_all(seed)
         super().__init__()
 
         self.input_size = input_size
@@ -56,6 +51,7 @@ class DSS(nn.Module):
         self.prenorm = prenorm
         self.residual = residual
         self.track_norms = track_norms
+        self.retrieval = retrieval
         if self.track_norms:
             self.layer_norms = {'layer_norm_{}'.format(i): 0. for i in range(n_layers)}
             self.layer_norms.update({'input_layer_norm': 0., 'pooling_layer_norm': 0., 'output_norm': 0.})
@@ -74,11 +70,13 @@ class DSS(nn.Module):
             setattr(self, f"inner_normalization_{i}", Normalization(input_size, mode=normalization))
             self.inner_normalizations.append(getattr(self, f"inner_normalization_{i}"))
 
-        self.normalization_layer = Normalization(input_size, mode=normalization) if prenorm else nn.Identity()
+        self.post_norm = Normalization(input_size, mode=normalization) if prenorm else nn.Identity()
         self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
         self.output_layer = nn.Linear(input_size, output_size, bias=bias)
         # top pooling layer
         self.top_pooling = TopPooling(mode=pooling, use_lengths=use_lengths)
+        if self.retrieval:
+            self.retrieval_head = RetrievalHead(input_size, output_size, activation='gelu')
 
     def forward(self, u, batch_lengths=None, transpose=True):
         """ Input u should be of shape (B, L) if encoding is 'embedding', else (B, L, data_dim)"""
@@ -90,15 +88,21 @@ class DSS(nn.Module):
             if self.prenorm: x = self.inner_normalizations[i](x)
             # DSS core computation + activation + dropout + linear mixing
             x = layer(x)  # (B L H) / (B H L)
-            if self.residual: x = self.drop(x)  + y
+            if self.residual: x = self.drop(x) + y
             if not self.prenorm: x = self.inner_normalizations[i](x)
             if self.track_norms: self.layer_norms['layer_norm_{}'.format(i)] += self.compute_layer_norm(x, transpose=transpose)
         # if prenorm, just the identity
-        x = self.normalization_layer(x)
+        x = self.post_norm(x)
         # pooling along the length dimension
         if transpose: x = x.transpose(-1, -2)  # (B H L) -> (B L H)
         x = self.top_pooling(x, batch_lengths=batch_lengths)
         if self.track_norms: self.layer_norms['pooling_layer_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
+        # if the model is applied to the retrieval task, use the retrieval head
+        # as the output layer, instead of the standard output layer
+        if self.retrieval:
+            x = self.retrieval_head(x)
+            if self.track_norms: self.layer_norms['output_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
+            return x
         x = self.output_layer(x)
         if self.track_norms: self.layer_norms['output_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
         return x
@@ -107,7 +111,7 @@ class DSS(nn.Module):
         ret_str = str(self.input_layer) + "\n"
         ret_str += str(self.core_block_0) + "\n"
         ret_str += "X {}".format(len(self.dss_blocks)) + "\n"
-        ret_str += str(self.normalization_layer) + "\n"
+        ret_str += str(self.post_norm) + "\n"
         ret_str += str(self.top_pooling) + "\n"
         ret_str += str(self.output_layer)
         return ret_str
@@ -226,7 +230,7 @@ class S4(DSS):
         ret_str = str(self.input_layer) + "\n"
         ret_str += str(self.s4_block_0) + "\n"
         ret_str += "X {}".format(len(self.core_blocks)) + "\n"
-        ret_str += str(self.normalization_layer) + "\n"
+        ret_str += str(self.post_norm) + "\n"
         ret_str += str(self.top_pooling) + "\n"
         ret_str += str(self.output_layer)
         return ret_str

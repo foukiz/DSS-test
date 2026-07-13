@@ -134,7 +134,7 @@ def pad_sequence(seq, max_len, pad_val=0):
 
 
 
-def unpack_batch(batch, torch_device):
+def unpack_batch(batch, torch_device=None):
     """ how to unpack the batch, depending on its content
     """
     if len(batch) == 2:
@@ -142,7 +142,16 @@ def unpack_batch(batch, torch_device):
         batch_lengths = None
     elif len(batch) == 3:
         batch_x, batch_y, batch_lengths = batch
-        batch_lengths = batch_lengths.to(torch_device)
+        if torch_device is not None:
+            batch_lengths = batch_lengths.to(torch_device)
+    # le cas AAN, où on a batch_x1, batch_x2, batch_lengths, batch_ids, batch_texts
+    elif len(batch) == 5:
+        batch_x1, batch_x2, batch_y, batch_lengths1, batch_lengths2 = batch
+        if torch_device is not None:
+            batch_lengths1 = batch_lengths1.to(torch_device)
+            batch_lengths2 = batch_lengths2.to(torch_device)
+        batch_x = torch.cat([batch_x1, batch_x2], dim=0)
+        batch_lengths = torch.cat([batch_lengths1, batch_lengths2], dim=0)
     return batch_x, batch_y, batch_lengths
 
 
@@ -464,6 +473,30 @@ def nplr(measure, N, rank=1, dtype=torch.float):
 
 
     return w, P, B, V
+
+
+
+
+""" S5 utilities """
+
+def init_VinvB(init_fun, rng, shape, Vinv):
+    """ Initialize B_tilde=V^{-1}B. First samples B. Then compute V^{-1}B.
+        Note we will parameterize this with two different matrices for complex
+        numbers.
+         Args:
+             init_fun:  the initialization function to use, e.g. lecun_normal()
+             rng:       jax random key to be used with init function.
+             shape (tuple): desired shape  (P,H)
+             Vinv: (complex64)     the inverse eigenvectors used for initialization
+         Returns:
+             B_tilde (complex64) of shape (P,H,2)
+     """
+    B = init_fun(rng, shape)
+    VinvB = Vinv @ B
+    VinvB_real = VinvB.real
+    VinvB_imag = VinvB.imag
+    return np.concatenate((VinvB_real[..., None], VinvB_imag[..., None]), axis=-1)
+
 
 
 

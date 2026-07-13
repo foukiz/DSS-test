@@ -178,6 +178,8 @@ def launch(
         if config['TRAIN']['TRACK_NORMS'] is True: kwargs['track_norms'] = True
     except KeyError:
         pass
+    if dataset.__class__.__name__ == 'AAN':
+        kwargs['retrieval'] = True
     model = make_model(data_dim=input_dim, output_size=output_dim, **cfg.model, **kwargs).to(device)
 
     cfg.instantiate_optimizer(params=model.parameters())

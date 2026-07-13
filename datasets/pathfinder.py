@@ -5,6 +5,7 @@ from einops.layers.torch import Rearrange
 
 import os
 import numpy as np
+import pickle as pkl
 
 from PIL import Image
 
@@ -80,22 +81,20 @@ class Pathfinder(Dataset):
     
     def import_dataset(self):
         
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=0.5, std=0.5),
-            Rearrange("1 h w -> (h w) 1")
-        ])
+        print("-" * 43 + f"Loading {type(self).__name__}" + "-" * 43)
 
-        print("-" * 43 + f" {type(self).__name__} loaded " + "-" * 43)
-
-        pathfinder_ds = PathfinderDataset(transforms=transform)
-
-        gen = torch.Generator().manual_seed(42)
-        train_ds, val_ds, test_ds = torch.utils.data.random_split(
-            pathfinder_ds,
-            [self.tr_size, self.va_size, self.te_size],
-            generator=gen,
-        )
+        if not os.path.exists(DATA_DIR + "/data.pkl"):
+            data = process_data(
+                train_size=self.train_size,
+                val_size=self.val_size,
+                test_size=self.test_size,
+                save=True
+            )
+        with open(DATA_DIR + "/data.pkl", "rb") as f:
+            data = pkl.load(f)
+            train_ds = TensorDataset(*data["train_ds"])
+            val_ds = TensorDataset(*data["val_ds"])
+            test_ds = TensorDataset(*data["test_ds"])
 
         print("-" * 43 + f" {type(self).__name__} loaded " + "-" * 43)
 
@@ -103,35 +102,35 @@ class Pathfinder(Dataset):
 
 
 
-class PathfinderDataset(torch.utils.data.Dataset):
-
-    def __init__(self, transforms) -> None:
-        super().__init__()
-        self.transforms = transforms
-        self.data_dir = DATA_DIR
-        self.img_dir = IMGS_DIR
-
-        if os.path.exists(self.data_dir + "/data_pairs.npy"):
-            self.pairs = np.load(self.data_dir + "/data_pairs.npy", allow_pickle=True)
-
-        else:
-            self.pairs = process_raw_data(save=True)
-
-    def __len__(self):
-        return len(self.pairs)
-
-    def __getitem__(self, index):
-        path, target = self.pairs[index]
-        with open(self.img_dir / path, "rb") as f:
-            sample = Image.open(f).convert("L")  # Open in grayscale
-        if self.transforms is not None:
-            sample = self.transforms(sample)
-        return sample, int(target)
-
-
+#class PathfinderDataset(torch.utils.data.Dataset):
+#
+#    def __init__(self, transforms) -> None:
+#        super().__init__()
+#        self.transforms = transforms
+#        self.data_dir = DATA_DIR
+#        self.img_dir = IMGS_DIR
+#
+#        if os.path.exists(self.data_dir + "/data_pairs.npy"):
+#            self.pairs = np.load(self.data_dir + "/data_pairs.npy", allow_pickle=True)
+#
+#        else:
+#            self.pairs = generate_path_label_pairs(save=True)
+#
+#    def __len__(self):
+#        return len(self.pairs)
+#
+#    def __getitem__(self, index):
+#        path, target = self.pairs[index]
+#        with open(self.img_dir / path, "rb") as f:
+#            sample = Image.open(f).convert("L")  # Open in grayscale
+#        if self.transforms is not None:
+#            sample = self.transforms(sample)
+#        return sample, int(target)
 
 
-def process_raw_data(save=True):
+
+
+def process_data(train_size=160000, val_size=20000, test_size=20000, save=True):
     """ process les données brutes pour stocker des paires (image_path, label) dans un fichier np.save
 
         les images sont au format "sample_X.png"
@@ -142,18 +141,58 @@ def process_raw_data(save=True):
     metadata = np.load(DATA_DIR + "/metadata/0.npy", allow_pickle=True)
     for line in metadata:
         samples.append(
-            (line[1], int(line[3]))
+            (line[1], line[3])
         )
 
-    if save:
-        np.save(DATA_DIR + "/data_pairs.npy", samples)
+    gen = torch.Generator().manual_seed(42)
+    permutation = torch.randperm(len(samples), generator=gen)
 
-    return samples
+    train_samples = [samples[i] for i in permutation[:train_size]]
+    val_samples = [samples[i] for i in permutation[train_size:(train_size+val_size)]]
+    test_samples = [samples[i] for i in permutation[(train_size+val_size):(train_size+val_size+test_size)]]
+
+    print("converting train images to tensors...")
+    x_train, y_train = img2tensor(train_samples)
+    print("converting validation images to tensors...")
+    x_val, y_val = img2tensor(val_samples)
+    print("converting test images to tensors...")
+    x_test, y_test = img2tensor(test_samples)
+    print("done.")
+
+    data = {
+        "train_ds": (x_train, y_train),
+        "val_ds": (x_val, y_val),
+        "test_ds": (x_test, y_test)
+    }
+    if save:
+        with open(DATA_DIR + "/data.pkl", "wb") as f: pkl.dump(data, f)
+
+    return data
+
+
+
+def img2tensor(samples):
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=0.5, std=0.5),
+        Rearrange("1 h w -> (h w) 1")
+    ])
+
+    N = len(samples)
+    x = torch.empty((N, 1024, 1), dtype=torch.float32)
+    y = torch.empty((N,), dtype=torch.long)
+    for i, (path, target) in enumerate(samples):
+        img = Image.open(IMGS_DIR / path).convert("L")
+        x[i] = transform(img)
+        y[i] = int(target)
+        if i % 5000 == 0:
+            print(f"processed {i} samples")
+
+    return x, y
+
 
 
 
 
 if __name__ == "__main__":
     ds = Pathfinder()
-    slice = ds.test_ds.__getitem__(0)
-    print(slice)

@@ -8,6 +8,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, Subset
 from torchtext.vocab import build_vocab_from_iterator
+import torchtext; torchtext.disable_torchtext_deprecation_warning()
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 

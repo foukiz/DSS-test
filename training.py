@@ -10,24 +10,24 @@ from utils import unpack_batch
 
 
 def train(
-        model,
-        dataset,
-        n_epochs,
-        batch_size,
-        loss_fn,
-        optimizer,
-        metrics=None,
-        scheduler=None,
-        get_gradients=False,
-        inspect_gradients=False,
-        display_every=None,
-        display_epoch=False,
-        use_wandb=False,
-        track_norms=False,
-        torch_device=None,
-        use_tqdm=True,
-        **kwargs
-    ):
+    model,
+    dataset,
+    n_epochs,
+    batch_size,
+    loss_fn,
+    optimizer,
+    metrics=None,
+    scheduler=None,
+    get_gradients=False,
+    inspect_gradients=False,
+    display_every=None,
+    display_epoch=False,
+    use_wandb=False,
+    track_norms=False,
+    torch_device=None,
+    use_tqdm=True,
+    **kwargs
+):
 
     train_loader = torch.utils.data.DataLoader(
         dataset.train_ds,
@@ -132,10 +132,7 @@ def training_step(batch_x, batch_y, batch_lengths, model, optimizer, loss_fn, me
     # update weights
     optimizer.zero_grad()
     loss.backward()
-    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
     optimizer.step()
-
-    #model.apply_weight_constraints_()
 
     stat_batch = {"loss": loss.item()}
 

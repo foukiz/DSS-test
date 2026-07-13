@@ -27,7 +27,7 @@ TRAIN:
   DISPLAY_EPOCH: True
   DISPLAY_EVERY: null
   INSPECT_GRADIENTS: False
-  GET_GRADIENTS: True
+  GET_GRADIENTS: False
   LOSS_FN: $torch.nn.CrossEntropyLoss
   LOSS_CONFIG: null
   METRICS: {'accuracy': $torchmetrics.Accuracy}

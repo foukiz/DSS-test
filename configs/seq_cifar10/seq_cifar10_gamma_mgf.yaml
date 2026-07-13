@@ -1,20 +1,20 @@
-PROJECT: "seq_CIFAR10_gamma"
+PROJECT: "seq_CIFAR10_gamma_mgf"
 DATASET:
   NAME: sCIFAR10
   TRAIN_SIZE: 45000
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU
-  ALPHA_MEAN: [1.]
+  ALPHA_MEAN: [1.]      #### test parameter ####
   ALPHA_STD: [0.1]
   THETA_MEAN: [1.]      #### test parameter ####
-  THETA_STD: [0.1]        #### test parameter ####
+  THETA_STD: [0.1]
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: [0.2]
   ENCODING: linear
   INPUT_SIZE: 512
-  KERNEL_VERSION: gamma
+  KERNEL_VERSION: gamma_mgf
   N_LAYERS: 10
   NAME: DSS
   NORMALIZATION: layer_norm
@@ -37,7 +37,7 @@ TRAIN:
   N_EPOCHS: 300               #### test parametre ####
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [0.004]
+    lr: [0.001]
     weight_decay: [0.01]
   #SCHEDULER: $torch.optim.lr_scheduler.SequentialLR
   #SCHEDULER_CONFIG:
@@ -53,7 +53,7 @@ TRAIN:
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
     patience: 10
-    factor: 0.2           #### testparametre ####
+    factor: 0.2
     min_lr: 0.000004
 #  SCHEDULER: $torch.optim.lr_scheduler.StepLR
 #  SCHEDULER_CONFIG:
