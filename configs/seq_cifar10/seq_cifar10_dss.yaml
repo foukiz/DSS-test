@@ -17,7 +17,7 @@ MODEL:
   POOLING: average
   PRENORM: False
   SEED: [1112,0] #[712,8,93,74,812]
-  STATE_SIZE: [64]             #### test parametre ####
+  STATE_SIZE: [10]             #### test parametre ####
   USE_LENGTHS: False
 TRAIN:
   BATCH_SIZE: 50

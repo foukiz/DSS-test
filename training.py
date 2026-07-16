@@ -111,7 +111,7 @@ def train(
             if track_norms:
                 #norms = model.compute_norms(L=dataset.seq_length)
                 norms = model.compute_norms()
-                layer_norms = {'layer_norm/'+k: v for k, v in model.layer_norms.items()}
+                layer_norms = {'layer_norm/'+k: float(v) for k, v in model.layer_norms.items()}
                 wandb_dic.update(norms)
                 wandb_dic.update(layer_norms)
             #wandb.log(wandb_dic)

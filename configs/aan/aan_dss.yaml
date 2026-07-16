@@ -13,7 +13,7 @@ MODEL:
   ENCODING: embedding
   INPUT_SIZE: 256
   KERNEL_VERSION: exp
-  N_LAYERS: 1
+  N_LAYERS: 6
   NAME: DSS
   NORMALIZATION: batch_norm
   POOLING: average
@@ -21,7 +21,7 @@ MODEL:
   SEED: [1112] #[712,8,93,74,812]
   USE_LENGTHS: True
 TRAIN:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 64
   DISPLAY_EPOCH: True
   DISPLAY_EVERY: null
   LOSS_FN: $torch.nn.CrossEntropyLoss  #$torch.nn.BCEWithLogitsLoss  #BCE if the output of the model is unidimensional
@@ -38,7 +38,7 @@ TRAIN:
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
     patience: 20
-  TORCH_DEVICE: cpu
+  TORCH_DEVICE:   cpu
   TRACK_NORMS: False
   USE_TQDM: False
   USE_WANDB: False

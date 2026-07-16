@@ -6,10 +6,10 @@ DATASET:
   TRAIN_SIZE: 18089
   VAL_SIZE: 17436
 MODEL:
-  ALPHA_MEAN: [3.,4.]
-  ALPHA_STD: [0.5]
-  THETA_MEAN: [4.]
-  THETA_STD: 0.5
+  ALPHA_MEAN: [1.]        #### test parametre ####
+  ALPHA_STD: [0.1]
+  THETA_MEAN: [0.1,1.]
+  THETA_STD: 0.1
   ACTIVATION: $torch.nn.GELU
   BIAS: True
   BIDIRECTIONAL: False
@@ -22,7 +22,7 @@ MODEL:
   NORMALIZATION: batch_norm
   POOLING: average
   PRENORM: True
-  SEED: [1112] #[712,8,93,74,812]
+  SEED: [0] #[712,8,93,74,812]        #### test parametre ####
   USE_LENGTHS: True
 TRAIN:
   BATCH_SIZE: 64

@@ -80,6 +80,17 @@
             ]
         },
         {
+            "name": "Debug Image gamma complex",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_gamma_complex.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
             "name": "Debug Image gamma MGF",
             "type": "debugpy",
             "request": "launch",
@@ -87,17 +98,6 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/seq_cifar10/seq_cifar10_gamma_mgf.yaml",
-                "--use_tqdm"
-            ]
-        },
-        {
-            "name": "Debug Image myown",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/launch.py",
-            "console": "integratedTerminal",
-            "args": [
-                "--config", "configs/seq_cifar10/seq_cifar10_myownk.yaml",
                 "--use_tqdm"
             ]
         },
@@ -153,6 +153,17 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/pathfinder/pathfinder_gamma.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Pathfinder gamma complex",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/pathfinder/pathfinder_gamma_complex.yaml",
                 "--use_tqdm"
             ]
         },

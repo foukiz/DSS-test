@@ -13,6 +13,7 @@ logs/
 models/
 wandb/
 graphs/
+kernels/
 images/
 snakes/
 datasets/generate_pathfinder/

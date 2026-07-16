@@ -8,7 +8,7 @@ import opt_einsum as oe
 from einops import rearrange
 from flax.linen.initializers import lecun_normal
 
-from kernels import DSSKernel, GammaExpectationKernel, GammaMGFKernel, UniformExpectationKernel, ExponentialExpectationKernel, HippoSSKernel, MyOwnLittleKernel
+from kernels import DSSKernel, GammaExpectationKernel, GammaMGFKernel, UniformExpectationKernel, ExponentialExpectationKernel, HippoSSKernel, GammaExpectationComplexKernel
 
 from utils import init_VinvB
 
@@ -17,7 +17,7 @@ from utils import init_VinvB
 
 class DSSLayer(nn.Module):
 
-    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'gamma_mgf', 'uniform', 'exponential', 'myown']
+    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'gamma_mgf', 'uniform', 'exponential', 'gamma_complex']
 
     def __init__(
         self,
@@ -54,8 +54,8 @@ class DSSLayer(nn.Module):
             self.kernel = ExponentialExpectationKernel(self.h, **kwargs)
         elif version == 'gamma_mgf':
             self.kernel = GammaMGFKernel(self.h, **kwargs)
-        elif version == 'myown':
-            self.kernel = MyOwnLittleKernel(self.h, **kwargs)
+        elif version == 'gamma_complex':
+            self.kernel = GammaExpectationComplexKernel(self.h, **kwargs)
         #self.bias = bias
 
         # should have been instantiated already
