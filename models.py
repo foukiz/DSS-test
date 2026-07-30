@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 import opt_einsum as oe
 
-from layers import DSSLayer, S4Layer, TopPooling, InputEncoder, Normalization, RetrievalHead
+from layers import DSSLayer, S4Layer, S4DLayer, TopPooling, InputEncoder, Normalization, RetrievalHead
 from transformer_layers import EncoderLayer, DecoderLayer, PositionalEncoding
 
 
@@ -47,6 +47,7 @@ class DSS(nn.Module):
         self.output_size = output_size
         self.activation = activation
         self.bias = bias
+        self.bidirectional = bidirectional
         self.version = kernel_version
         self.prenorm = prenorm
         self.residual = residual
@@ -58,17 +59,28 @@ class DSS(nn.Module):
 
         self.drop = nn.Dropout2d(dropout) if dropout > 0.0 else nn.Identity()
 
-        self.dss_blocks = []
+        self.core_blocks = []
         self.inner_normalizations = []
+        if self.bidirectional:
+            self.reverse_blocks = []
+            self.bidirectional_linears = []
 
         for i in range(n_layers):
             # stacker n_layers blocs DSS:
             # DSSLayer (core) + activation + dropout + linear (mixing layer)
             dss_layer = DSSLayer(input_size=input_size, state_size=state_size, activation=activation, dropout=dropout, version=self.version, bidirectional=bidirectional, bias=bias, **kwargs)
             setattr(self, f'core_block_{i}', dss_layer)
-            self.dss_blocks.append(dss_layer)
+            self.core_blocks.append(dss_layer)
             setattr(self, f"inner_normalization_{i}", Normalization(input_size, mode=normalization))
             self.inner_normalizations.append(getattr(self, f"inner_normalization_{i}"))
+
+            if self.bidirectional:
+                dss_reverse_layer = DSSLayer(input_size=input_size, state_size=state_size, activation=activation, dropout=dropout, version=self.version, bidirectional=bidirectional, bias=bias, **kwargs)
+                bidirectional_linear = nn.Linear(2*self.input_size, self.input_size)
+                setattr(self, f'reverse_block_{i}', dss_reverse_layer)
+                setattr(self, f'bidirectional_linear_{i}', bidirectional_linear)
+                self.reverse_blocks.append(dss_reverse_layer)
+                self.bidirectional_linears.append(bidirectional_linear)
 
         self.post_norm = Normalization(input_size, mode=normalization) if prenorm else nn.Identity()
         self.input_layer = InputEncoder(data_dim, input_size, mode=encoding, **kwargs)
@@ -83,11 +95,17 @@ class DSS(nn.Module):
         x = self.input_layer(u)
         if transpose: x = x.transpose(-1, -2)  # (B H L)
         if self.track_norms: self.layer_norms['input_layer_norm'] += self.compute_layer_norm(x, transpose=transpose)
-        for i, layer in enumerate(self.dss_blocks):
+        for i, layer in enumerate(self.core_blocks):
             if self.residual: y = x
             if self.prenorm: x = self.inner_normalizations[i](x)
             # DSS core computation + activation + dropout + linear mixing
-            x = layer(x)  # (B L H) / (B H L)
+            x_for = layer(x)  # (B L H) / (B H L)
+            if self.bidirectional:
+                x_rev = self.reverse_blocks[i](x)
+                x = torch.cat([x_for, x_rev], dim=-2)
+                x = self.bidirectional_linears[i](x.transpose(-1,-2)).transpose(-1,-2)
+            else:
+                x = x_for
             if self.residual: x = self.drop(x) + y
             if not self.prenorm: x = self.inner_normalizations[i](x)
             if self.track_norms: self.layer_norms['layer_norm_{}'.format(i)] += self.compute_layer_norm(x, transpose=transpose)
@@ -110,7 +128,7 @@ class DSS(nn.Module):
     def __str__(self):
         ret_str = str(self.input_layer) + "\n"
         ret_str += str(self.core_block_0) + "\n"
-        ret_str += "X {}".format(len(self.dss_blocks)) + "\n"
+        ret_str += "X {}".format(len(self.core_blocks)) + "\n"
         ret_str += str(self.post_norm) + "\n"
         ret_str += str(self.top_pooling) + "\n"
         ret_str += str(self.output_layer)
@@ -123,7 +141,7 @@ class DSS(nn.Module):
 
         norms = {}
         with torch.no_grad():
-            for i, block in enumerate(self.dss_blocks):
+            for i, block in enumerate(self.core_blocks):
                 k = block.kernel
                 #norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
                 kernel_norms = k.compute_norms()
@@ -157,7 +175,7 @@ class DSS(nn.Module):
 
     def compute_gradients(self, reduction='mean'):
         grads = {}
-        for i, l in enumerate(self.dss_blocks):
+        for i, l in enumerate(self.core_blocks):
             layer_grads = l.compute_gradients(reduction)
             grads.update(
                 {'gradients/dss_layer_{}/{}'.format(i, k): v for k, v in layer_grads.items()}
@@ -247,8 +265,117 @@ class S4(DSS):
                 norms['norms/kernel_{}'.format(i)] = k[0].norm().item() / k[0].numel()
                 norms['norms/D_{}'.format(i)] = block.s4_layer.D.norm().item() / block.s4_layer.D.numel()
         return norms
-    
 
+
+
+
+
+class S4D(DSS):
+
+    def __init__(
+        self,
+        input_size,
+        output_size,
+        data_dim,
+        state_size=DEFAULT_STATE_SIZE,
+        bidirectional=False,
+        activation='gelu',
+        kernel_version='exp',
+        bias=True,
+        dropout=0.0,
+        normalization='batch_norm',
+        n_layers=1,
+        encoding=None,
+        prenorm=False,
+        residual=True,
+        pooling='last',     # top pooling mode - 'last' or 'average' or 'manytomany'
+        retrieval=False,
+        use_lengths=False,
+        track_norms=False,
+        seed=None,
+        **kwargs
+    ):
+
+        super().__init__(
+            input_size,
+            output_size,
+            data_dim,
+            state_size,
+            bidirectional,
+            activation,
+            kernel_version,
+            bias,
+            dropout,
+            normalization,
+            n_layers,
+            encoding,
+            prenorm,
+            residual,
+            pooling,
+            retrieval,
+            use_lengths,
+            track_norms,
+            seed,
+            **kwargs
+        )
+
+
+        self.core_blocks = []
+        if self.bidirectional:
+            self.reverse_blocks = []
+            self.bidirectional_linears = []
+
+        for i in range(n_layers):
+            # stacker n_layers blocs S4D:
+            # DSSLayer (core) + activation + dropout + linear (mixing layer)
+            s4d_layer = S4DLayer(input_size=input_size, state_size=state_size, activation=activation, dropout=dropout, bidirectional=bidirectional, **kwargs)
+            setattr(self, f'core_block_{i}', s4d_layer)
+            self.core_blocks.append(s4d_layer)
+            if self.bidirectional:
+                s4d_reverse_layer = S4DLayer(input_size=input_size, state_size=state_size, activation=activation, dropout=dropout, bidirectional=bidirectional, **kwargs)
+                bidirectional_linear = nn.Linear(2*self.input_size, self.input_size)
+                setattr(self, f'reverse_block_{i}', s4d_reverse_layer)
+                setattr(self, f'bidirectional_linear_{i}', bidirectional_linear)
+                self.reverse_blocks.append(s4d_reverse_layer)
+                self.bidirectional_linears.append(bidirectional_linear)
+
+            #setattr(self, f"inner_normalization_{i}", Normalization(input_size, mode=normalization))
+            #self.inner_normalizations.append(getattr(self, f"inner_normalization_{i}"))
+
+    def forward(self, u, batch_lengths=None, transpose=True):
+        """ Input u should be of shape (B, L) if encoding is 'embedding', else (B, L, data_dim)"""
+        x = self.input_layer(u)
+        if transpose: x = x.transpose(-1, -2)  # (B H L)
+        if self.track_norms: self.layer_norms['input_layer_norm'] += self.compute_layer_norm(x, transpose=transpose)
+        for i, layer in enumerate(self.core_blocks):
+            if self.residual: y = x
+            if self.prenorm: x = self.inner_normalizations[i](x)
+            # DSS core computation + activation + dropout + linear mixing
+            x_for = layer(x)  # (B L H) / (B H L)
+            if self.bidirectional:
+                x_rev = self.reverse_blocks[i](x)
+                x = torch.cat([x_for, x_rev], dim=-2)
+                x = self.bidirectional_linears[i](x.transpose(-1,-2)).transpose(-1,-2)
+            else:
+                x = x_for
+            if self.residual: x = self.drop(x) + y
+            if not self.prenorm: x = self.inner_normalizations[i](x)
+            if self.track_norms: self.layer_norms['layer_norm_{}'.format(i)] += self.compute_layer_norm(x, transpose=transpose)
+        # if prenorm, just the identity
+        x = self.post_norm(x)
+        # pooling along the length dimension
+        if transpose: x = x.transpose(-1, -2)  # (B H L) -> (B L H)
+        x = self.top_pooling(x, batch_lengths=batch_lengths)
+        if self.track_norms: self.layer_norms['pooling_layer_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
+        # if the model is applied to the retrieval task, use the retrieval head
+        # as the output layer, instead of the standard output layer
+        if self.retrieval:
+            x = self.retrieval_head(x)
+            if self.track_norms: self.layer_norms['output_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
+            return x
+        x = self.output_layer(x)
+        if self.track_norms: self.layer_norms['output_norm'] += self.compute_layer_norm(x, is_sequence=False, transpose=transpose)
+        return x
 
 
 

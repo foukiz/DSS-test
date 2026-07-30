@@ -1,4 +1,4 @@
-PROJECT: "pathfinder_gamma_complex"
+PROJECT: "pathfinder_gamma_complex_neg_re"
 DATASET:
   NAME: Pathfinder
   TEST_SIZE: 20000
@@ -10,20 +10,20 @@ MODEL:
   ALPHA_STD: [0.1]
   BETA_MEAN: [1.]
   BETA_STD: [0.1]
-  THETA_MEAN: [0.]
-  THETA_STD: [0.1]
+  #THETA_MIN: [0.]
+  #THETA_MAX: [6.28]
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: 0.1
   ENCODING: linear
   INPUT_SIZE: 256
-  KERNEL_VERSION: gamma_complex
+  KERNEL_VERSION: gamma_complex_neg_re
   N_LAYERS: 6
   NAME: DSS
-  NORMALIZATION: batch_norm
+  NORMALIZATION: batch_norm   
   POOLING: last
   PRENORM: True
-  SEED: [0] #[712,8,93,74,812]
+  SEED: [1112] #[712,8,93,74,812]      #### test parameter ####
   USE_LENGTHS: False
 TRAIN:
   BATCH_SIZE: 100
@@ -38,15 +38,16 @@ TRAIN:
   N_EPOCHS: 200
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [0.004]
+    lr: [0.004]              #### test parametre ####
     weight_decay: 0.
-#  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
-#  SCHEDULER_CONFIG:
-#    patience: 10
-#    min_lr: 0.00001
-  SCHEDULER: $torch.optim.lr_scheduler.CosineAnnealingLR
+  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    T_max: 200
+    patience: 10
+    min_lr: 0.00001
+#  SCHEDULER: $torch.optim.lr_scheduler.CosineAnnealingLR
+#  SCHEDULER_CONFIG:
+#    T_max: 200
+#    eta_min: 0.00001
   TORCH_DEVICE: cpu
   TRACK_NORMS: True
   USE_TQDM: False

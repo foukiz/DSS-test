@@ -24,7 +24,7 @@ from typing import Optional
 
 from training import train, evaluate
 from config import Config
-from models import DSS, S4, TransformerEncoder
+from models import DSS, S4, S4D, TransformerEncoder
 
 from datasets import copy_task, listops, seq_cifar10, imdb, aan, pathfinder, smnist, pmnist, ptb
 
@@ -51,7 +51,7 @@ ARGS = vars(parse_args())
 
 def make_model(name, **kwargs):
     low_name = name.lower()
-    models = {'dss': DSS, 's4': S4, 'transformer': TransformerEncoder}
+    models = {'dss': DSS, 's4': S4, 's4d': S4D, 'transformer': TransformerEncoder}
     if low_name not in models:
         err_str = "{} is not a correct model name, accepted models are".format(low_name)
         for i, k in enumerate(models.keys()):

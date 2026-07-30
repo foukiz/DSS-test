@@ -5,19 +5,31 @@ import numpy as np
 
 import opt_einsum as oe
 
+import torch.nn.functional as F
+
 from einops import rearrange
 from flax.linen.initializers import lecun_normal
 
-from kernels import DSSKernel, GammaExpectationKernel, GammaMGFKernel, UniformExpectationKernel, ExponentialExpectationKernel, HippoSSKernel, GammaExpectationComplexKernel
+from kernels import (
+    DSSKernel,
+    GammaExpectationKernel,
+    GammaMGFKernel,
+    UniformExpectationKernel,
+    ExponentialExpectationKernel,
+    HippoSSKernel,
+    S4DKernel,
+    GammaExpectationComplexKernel,
+    GammaExpectationComplexKernelNegRe
+)
 
-from utils import init_VinvB
+from utils import init_VinvB, Activation
 
 
 
 
 class DSSLayer(nn.Module):
 
-    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'gamma_mgf', 'uniform', 'exponential', 'gamma_complex']
+    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'gamma_mgf', 'uniform', 'exponential', 'gamma_complex', 'gamma_complex_neg_re']
 
     def __init__(
         self,
@@ -40,29 +52,33 @@ class DSSLayer(nn.Module):
         self.n = state_size
         self.bidirectional = bidirectional
 
+        channels = 2 if self.bidirectional else 1
+
         self.D = nn.Parameter(torch.randn(self.h))
         
         self.max_kernel_length = max_kernel_length
 
         if version in ('exp', 'softmax', 'mgf'):
-            self.kernel = DSSKernel(self.h, self.n, version=version)
+            self.kernel = DSSKernel(self.h, self.n, version=version, channels=channels)
         elif version == 'gamma':
-            self.kernel = GammaExpectationKernel(self.h, **kwargs)
+            self.kernel = GammaExpectationKernel(self.h, channels=channels, **kwargs)
         elif version == 'uniform':
-            self.kernel = UniformExpectationKernel(self.h, **kwargs)
+            self.kernel = UniformExpectationKernel(self.h, channels=channels, **kwargs)
         elif version == 'exponential':
-            self.kernel = ExponentialExpectationKernel(self.h, **kwargs)
+            self.kernel = ExponentialExpectationKernel(self.h, channels=channels, **kwargs)
         elif version == 'gamma_mgf':
-            self.kernel = GammaMGFKernel(self.h, **kwargs)
+            self.kernel = GammaMGFKernel(self.h, channels=channels, **kwargs)
         elif version == 'gamma_complex':
-            self.kernel = GammaExpectationComplexKernel(self.h, **kwargs)
+            self.kernel = GammaExpectationComplexKernel(self.h, channels=channels, **kwargs)
+        elif version == 'gamma_complex_neg_re':
+            self.kernel = GammaExpectationComplexKernelNegRe(self.h, channels=channels, **kwargs)
         #self.bias = bias
 
         # should have been instantiated already
         self.activation = activation
         self.dropout = nn.Dropout2d(dropout) if dropout > 0.0 else nn.Identity()
 
-        self.linear = nn.Linear(input_size, input_size, bias=bias)
+        self.output = nn.Linear(input_size, input_size, bias=bias)
 
     def forward(self, u): # absorbs return_output and transformer src mask
         """
@@ -77,7 +93,11 @@ class DSSLayer(nn.Module):
 
         # Compute SS Kernel
         Lk = L if not self.max_kernel_length else min(self.max_kernel_length, L)
-        k = self.kernel(L=Lk)  # (H Lk)
+        k = self.kernel(L=Lk)  # (C H Lk)
+
+        if self.bidirectional:
+            k0, k1 = rearrange(k, '(s c) h l -> s c h l', s=2)
+            k = (F.pad(k0, (0, L)) + F.pad(k1.flip(-1), (L, 0))).squeeze(0)
 
         # y = multiply_polynomials(u.unsqueeze(1), k.unsqueeze(0))[..., :L]  # (B 1 H L), (1 H Lk) -> (B H L)
         n = L + Lk
@@ -92,10 +112,10 @@ class DSSLayer(nn.Module):
 
         y = self.dropout(self.activation(y))  # (B H L)
 
-        y = self.linear(y.transpose(-1, -2)).transpose(-1, -2)  # (B H L)
+        y = self.output(y.transpose(-1, -2)).transpose(-1, -2)  # (B H L)
 
         return y        # (B H L)
-    
+
     def compute_gradients(self, reduction='mean'):
         grads = {}
         k = self.kernel
@@ -149,6 +169,105 @@ class S4Layer(DSSLayer):
 
         # SSM Kernel
         self.kernel = HippoSSKernel(self.h, N=self.n, L=None, **kwargs)
+
+
+
+class S4DLayer(nn.Module):
+
+    def __init__(
+        self,
+        input_size,
+        state_size,
+        channels=1,
+        activation='gelu',
+        gate=None,
+        gate_activation=None,
+        mult_activation=None,
+        final_activation='glu',
+        postactivation=None,
+        initializer=None,
+        bidirectional=True,
+        weight_norm=False,
+        dropout=0.0,
+        drop_kernel=0.0,
+        tie_dropout=False,
+        transposed=True,
+        **kwargs
+    ):
+        """ Implémentation de S4, basée sur celle de DSS: les calculs et les arguments sont
+            essentiellement les mêmes, mis à part pour l
+        """
+
+        super().__init__()
+
+        self.h = input_size
+        self.n = state_size
+        self.channels = channels
+        #self.transposed = transposed
+
+        self.drop = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
+
+        self.activation = activation
+        self.final_activation = Activation(activation=final_activation, dim=-2)
+
+        d_input = self.h
+        d_output = 2*d_input if final_activation == 'glu' else d_input
+        self.output_linear = nn.Sequential(
+            nn.Conv1d(d_input, d_output, kernel_size=1),
+            self.final_activation
+        )
+
+        self.D = nn.Parameter(torch.randn(self.h))
+
+        self.bidirectional = bidirectional
+        if self.bidirectional:
+            channels *= 2
+
+        # SSM Kernel
+        self.kernel = S4DKernel(self.h, N=self.n, channels=channels, **kwargs)
+
+        self.drop = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
+        self.drop_kernel = nn.Dropout(drop_kernel) if drop_kernel > 0.0 else nn.Identity()
+
+    def forward(self, u): # absorbs return_output and transformer src mask
+        """
+        u: (B L H)
+        state: (H N) never needed unless you know what you're doing
+
+        Returns: same shape as u
+        """
+
+        # L (sequence length) is the second dimension, the first is the batch size
+        L = u.size(-1)
+
+        # Compute SS Kernel
+        #Lk = L if not self.max_kernel_length else min(self.max_kernel_length, L)
+        Lk = L
+        k = self.kernel(L=Lk)  # (H Lk)
+
+        if self.bidirectional:
+            k0, k1 = rearrange(k, '(s c) h l -> s c h l', s=2)
+            k = (F.pad(k0, (0, L)) + F.pad(k1.flip(-1), (L, 0))).squeeze(0)
+
+        k = self.drop_kernel(k)
+
+        # y = multiply_polynomials(u.unsqueeze(1), k.unsqueeze(0))[..., :L]  # (B 1 H L), (1 H Lk) -> (B H L)
+        n = L + Lk
+        k_f = torch.fft.rfft(k, n=n)  # (H ~n/2)
+        u_f = torch.fft.rfft(u, n=n)  # (B H ~n/2)
+        y_f = oe.contract('bhl,hl->bhl', u_f, k_f)            # (B H ~n/2)
+        y = torch.fft.irfft(y_f, n=n)[... ,:L] # (B H L)
+
+        # Compute D term in state space equation - essentially a skip connection
+        y = y + oe.contract('bhl,h->bhl', u, self.D)
+        #y = y + u * self.D[None,None,:]  # (B H L)
+
+        y = self.drop(self.activation(self.drop(y)))  # (B H L)
+
+        #y = self.output_linear(y.transpose(-1, -2)).transpose(-1, -2)  # (B H L)
+        y = self.output_linear(y)                                 # (B H L)
+
+        return y        # (B H L)
 
 
 
@@ -353,6 +472,7 @@ class TransposeBatchNorm(nn.Module):
         x = x.transpose(-1, -2)  # (B, H, L)-> (B, L, H)
         return x
 
+
 class CustomLayerNorm(nn.Module):
     """ expects shape (B, H, L)
     """
@@ -373,6 +493,33 @@ class CustomLayerNorm(nn.Module):
         else:
             y = self.ln(x.transpose(-1,-2)).transpose(-1,-2)
         return y
+
+
+class DropoutNd(nn.Module):
+    def __init__(self, p: float = 0.5, tie=True, transposed=True):
+        """
+        tie: tie dropout mask across sequence lengths (Dropout1d/2d/3d)
+        """
+        super().__init__()
+        if p < 0 or p >= 1:
+            raise ValueError("dropout probability has to be in [0, 1), " "but got {}".format(p))
+        self.p = p
+        self.tie = tie
+        #self.transposed = transposed
+        self.binomial = torch.distributions.binomial.Binomial(probs=1-self.p)
+
+    def forward(self, X):
+        """X: (batch, dim, lengths...)."""
+        if self.training:
+            #if not self.transposed: X = rearrange(X, 'b ... d -> b d ...')
+            # binomial = torch.distributions.binomial.Binomial(probs=1-self.p) # This is incredibly slow because of CPU -> GPU copying
+            mask_shape = X.shape[:2] + (1,)*(X.ndim-2) if self.tie else X.shape
+            # mask = self.binomial.sample(mask_shape)
+            mask = torch.rand(*mask_shape, device=X.device) < 1.-self.p
+            X = X * mask * (1.0/(1-self.p))
+            #if not self.transposed: X = rearrange(X, 'b d ... -> b ... d')
+            return X
+        return X
 
 
 

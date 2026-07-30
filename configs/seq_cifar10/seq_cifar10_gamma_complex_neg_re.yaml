@@ -1,17 +1,23 @@
-PROJECT: "seq_CIFAR10_gamma"
+PROJECT: "seq_CIFAR10_gamma_complex_neg_re"
 DATASET:
   NAME: sCIFAR10
   TRAIN_SIZE: 45000
   VAL_SIZE: 5000
 MODEL:
   ACTIVATION: $torch.nn.GELU
+  ALPHA_MEAN: [0.]
+  ALPHA_STD: [0.1]
+  BETA_MEAN: [1.,0.01]      #### test parameter ####
+  BETA_STD: [0.1]
+  #THETA_MIN: [0.]
+  #THETA_MAX: [6.28]
   BIAS: True
   BIDIRECTIONAL: False
   DROPOUT: [0.2]
   ENCODING: linear
   INPUT_SIZE: 512
-  KERNEL_VERSION: myown
-  N_LAYERS: 10
+  KERNEL_VERSION: gamma_complex_neg_re
+  N_LAYERS: 6
   NAME: DSS
   NORMALIZATION: layer_norm
   POOLING: average
@@ -35,27 +41,16 @@ TRAIN:
   OPTIMIZER_CONFIG:
     lr: [0.004]
     weight_decay: [0.01]
-  #SCHEDULER: $torch.optim.lr_scheduler.SequentialLR
-  #SCHEDULER_CONFIG:
-  #  scheduler1: $torch.optim.lr_scheduler.LinearLR
-  #  scheduler1_config:
-  #    start_factor: 0.2
-  #    total_iters: 20
-  #  scheduler2: $torch.optim.lr_scheduler.CosineAnnealingLR
-  #  scheduler2_config:
-  #    T_max: 190
-  #    eta_min: 0.00001
-  #  milestones: 20
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:
-    patience: 10
-    factor: 0.2           #### testparametre ####
-    min_lr: 0.000004
+    patience: 15
+    factor: 0.1
+    min_lr: 0.0004                  #### test parameter ####
 #  SCHEDULER: $torch.optim.lr_scheduler.StepLR
 #  SCHEDULER_CONFIG:
 #    step_size: 1.
 #    gamma: 0.98
   TORCH_DEVICE: cpu
-  TRACK_NORMS: False
+  TRACK_NORMS: True
   USE_TQDM: False
   USE_WANDB: False

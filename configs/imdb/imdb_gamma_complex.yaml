@@ -1,4 +1,4 @@
-PROJECT: "IMDB_gamma"
+PROJECT: "IMDB_gamma_complex"
 DATASET:
   NAME: IMDB
   MAX_LEN: 2048
@@ -6,23 +6,25 @@ DATASET:
   TRAIN_SIZE: 25000
   VAL_SIZE: 12500
 MODEL:
-  ALPHA_MEAN: [1.] #[1.,2.,4.,8.]
-  ALPHA_STD: [0.5]
-  THETA_MEAN: [1.,2.,3.,5.] #[4.]
-  THETA_STD: 0.5
+  ALPHA_MEAN: [1.]
+  ALPHA_STD: [0.1]
+  BETA_MEAN: [4.,1.,2.]           #### test parameter ####
+  BETA_STD: [0.1]
+  THETA_MEAN: [0.]
+  THETA_STD: [0.005,1.]           #### test parameter ####
   ACTIVATION: $torch.nn.GELU
   BIAS: True
   BIDIRECTIONAL: False
-  DROPOUT: 0.
+  DROPOUT: 0.1                    #### test parameter ####
   ENCODING: embedding
   INPUT_SIZE: 128
-  KERNEL_VERSION: gamma
+  KERNEL_VERSION: gamma_complex
   N_LAYERS: 4
   NAME: DSS
   NORMALIZATION: batch_norm
   POOLING: last
   PRENORM: True
-  SEED: [1112,0,712] #[712,8,93,74,812]
+  SEED: [1112] #[712,8,93,74,812]
   USE_LENGTHS: True
 TRAIN:
   BATCH_SIZE: 50
@@ -37,7 +39,7 @@ TRAIN:
   N_EPOCHS: 40
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [0.01]
+    lr: [0.01]                 #### test parameter ####
     weight_decay: 0.
   SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
   SCHEDULER_CONFIG:

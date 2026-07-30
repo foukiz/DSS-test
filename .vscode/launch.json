@@ -13,7 +13,7 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Debug listops",
+            "name": "Debug listops DSS (exp)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
@@ -24,7 +24,7 @@
             ]
         },
         {
-            "name": "Debug copytask",
+            "name": "Debug copytask DSS (exp)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
@@ -35,7 +35,7 @@
             ]
         },
         {
-            "name": "Debug seq_cifar10 DSS",
+            "name": "Debug seq_cifar10 DSS (exp)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/launch.py",
@@ -69,6 +69,17 @@
             ]
         },
         {
+            "name": "Debug listops gamma complex",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/listops/listops_gamma_complex.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
             "name": "Debug Image gamma",
             "type": "debugpy",
             "request": "launch",
@@ -87,6 +98,17 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/seq_cifar10/seq_cifar10_gamma_complex.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Image gamma complex Neg Re",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_gamma_complex_neg_re.yaml",
                 "--use_tqdm"
             ]
         },
@@ -168,6 +190,17 @@
             ]
         },
         {
+            "name": "Debug Pathfinder gamma complex neg re",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/pathfinder/pathfinder_gamma_complex_neg_re.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
             "name": "Debug Pathfinder DSS (exp)",
             "type": "debugpy",
             "request": "launch",
@@ -197,6 +230,17 @@
             "console": "integratedTerminal",
             "args": [
                 "--config", "configs/ptb/ptb_S4.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Image S4D",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_s4d.yaml",
                 "--use_tqdm"
             ]
         },

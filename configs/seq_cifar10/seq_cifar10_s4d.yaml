@@ -1,4 +1,4 @@
-PROJECT: "seq_CIFAR10_DSS"
+PROJECT: "seq_CIFAR10_S4D"
 DATASET:
   NAME: sCIFAR10
   TRAIN_SIZE: 45000
@@ -6,17 +6,18 @@ DATASET:
 MODEL:
   ACTIVATION: $torch.nn.GELU 
   BIAS: True
-  BIDIRECTIONAL: True         #### test parametre ####
-  DROPOUT: 0.2
+  BIDIRECTIONAL: True
+  DISC: bilinear
+  DROPOUT: 0.1
   ENCODING: linear
   INPUT_SIZE: 512
   KERNEL_VERSION: exp
   N_LAYERS: 6
-  NAME: DSS
+  NAME: S4D
   NORMALIZATION: [layer_norm]
   POOLING: average
   PRENORM: False
-  SEED: [1112,0] #[712,8,93,74,812]
+  SEED: [1112] #[712,8,93,74,812]
   STATE_SIZE: [64]
   USE_LENGTHS: False
 TRAIN:
@@ -32,11 +33,11 @@ TRAIN:
   N_EPOCHS: 200
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: 0.004
-    weight_decay: 0.01
-  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
+    lr: 0.01
+    weight_decay: 0.05
+  SCHEDULER: $torch.optim.lr_scheduler.CosineAnnealingLR
   SCHEDULER_CONFIG:
-    patience: 10
+    T_max: 200
   TORCH_DEVICE: cpu
   TRACK_NORMS: False
   USE_TQDM: False
