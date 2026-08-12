@@ -206,7 +206,7 @@ class GammaExpectationKernel(nn.Module):
         # expm1(x) = exp(x) - 1    (optimisé pour x proche de 0)
         k = -d * (1 / (alpha * theta)) * torch.exp(-alpha * torch.log(beta)) * torch.expm1(u)    # [C H L]
 
-        return k                                              # [C H L]
+        return k.squeeze(0)                                              # [C H L]
 
     def Order2DL_forward(self, L, state=None):
         raise NotImplementedError
@@ -289,7 +289,7 @@ class GammaExpectationComplexKernel(nn.Module):
 
         k = d * (factr1 * factr2 * factr3)              # [C H L]
 
-        return k.float()                                  # [C H L]
+        return k.float().squeeze(0)                          # [C H L]
 
     def Order2DL_forward(self, L, state=None):
         raise NotImplementedError

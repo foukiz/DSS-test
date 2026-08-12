@@ -39,8 +39,8 @@ TRAIN:
   N_EPOCHS: 200
   OPTIMIZER: $torch.optim.AdamW
   OPTIMIZER_CONFIG:
-    lr: [0.004]                                        #### test parameter ####
-    weight_decay: [0.01]                              #### test parameter ####  
+    lr: [0.004]
+    weight_decay: [0.01]
 #  SCHEDULER: $torch.optim.lr_scheduler.ReduceLROnPlateau
 #  SCHEDULER_CONFIG:
 #    patience: 15

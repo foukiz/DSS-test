@@ -52,7 +52,8 @@ class DSSLayer(nn.Module):
         self.n = state_size
         self.bidirectional = bidirectional
 
-        channels = 2 if self.bidirectional else 1
+        #channels = 2 if self.bidirectional else 1
+        channels = 1
 
         self.D = nn.Parameter(torch.randn(self.h))
         
@@ -77,6 +78,7 @@ class DSSLayer(nn.Module):
         # should have been instantiated already
         self.activation = activation
         self.dropout = nn.Dropout2d(dropout) if dropout > 0.0 else nn.Identity()
+        #self.dropout = DropoutNd(dropout) if dropout > 0.0 else nn.Identity()
 
         self.output = nn.Linear(input_size, input_size, bias=bias)
 
@@ -95,9 +97,9 @@ class DSSLayer(nn.Module):
         Lk = L if not self.max_kernel_length else min(self.max_kernel_length, L)
         k = self.kernel(L=Lk)  # (C H Lk)
 
-        if self.bidirectional:
-            k0, k1 = rearrange(k, '(s c) h l -> s c h l', s=2)
-            k = (F.pad(k0, (0, L)) + F.pad(k1.flip(-1), (L, 0))).squeeze(0)
+        #if self.bidirectional:
+        #    k0, k1 = rearrange(k, '(s c) h l -> s c h l', s=2)
+        #    k = (F.pad(k0, (0, L)) + F.pad(k1.flip(-1), (L, 0))).squeeze(0)
 
         # y = multiply_polynomials(u.unsqueeze(1), k.unsqueeze(0))[..., :L]  # (B 1 H L), (1 H Lk) -> (B H L)
         n = L + Lk
@@ -205,8 +207,6 @@ class S4DLayer(nn.Module):
         self.channels = channels
         #self.transposed = transposed
 
-        self.drop = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
-
         self.activation = activation
         self.final_activation = Activation(activation=final_activation, dim=-2)
 
@@ -220,14 +220,16 @@ class S4DLayer(nn.Module):
         self.D = nn.Parameter(torch.randn(self.h))
 
         self.bidirectional = bidirectional
-        if self.bidirectional:
-            channels *= 2
+        #if self.bidirectional:
+        #    channels *= 2
 
         # SSM Kernel
         self.kernel = S4DKernel(self.h, N=self.n, channels=channels, **kwargs)
 
-        self.drop = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
-        self.drop_kernel = nn.Dropout(drop_kernel) if drop_kernel > 0.0 else nn.Identity()
+        #self.drop = nn.Dropout(dropout) if dropout > 0.0 else nn.Identity()
+        self.drop = DropoutNd(dropout) if dropout > 0.0 else nn.Identity()
+        #self.drop_kernel = nn.Dropout(drop_kernel) if drop_kernel > 0.0 else nn.Identity()
+        self.drop_kernel = DropoutNd(drop_kernel) if drop_kernel > 0.0 else nn.Identity()
 
     def forward(self, u): # absorbs return_output and transformer src mask
         """
@@ -245,9 +247,9 @@ class S4DLayer(nn.Module):
         Lk = L
         k = self.kernel(L=Lk)  # (H Lk)
 
-        if self.bidirectional:
-            k0, k1 = rearrange(k, '(s c) h l -> s c h l', s=2)
-            k = (F.pad(k0, (0, L)) + F.pad(k1.flip(-1), (L, 0))).squeeze(0)
+        #if self.bidirectional:
+        #    k0, k1 = rearrange(k, '(s c) h l -> s c h l', s=2)
+        #    k = (F.pad(k0, (0, L)) + F.pad(k1.flip(-1), (L, 0))).squeeze(0)
 
         k = self.drop_kernel(k)
 

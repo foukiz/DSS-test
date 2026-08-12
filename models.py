@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 import opt_einsum as oe
 
-from layers import DSSLayer, S4Layer, S4DLayer, TopPooling, InputEncoder, Normalization, RetrievalHead
+from layers import DSSLayer, DropoutNd, S4Layer, S4DLayer, TopPooling, InputEncoder, Normalization, RetrievalHead
 from transformer_layers import EncoderLayer, DecoderLayer, PositionalEncoding
 
 
@@ -58,6 +58,7 @@ class DSS(nn.Module):
             self.layer_norms.update({'input_layer_norm': 0., 'pooling_layer_norm': 0., 'output_norm': 0.})
 
         self.drop = nn.Dropout2d(dropout) if dropout > 0.0 else nn.Identity()
+        #self.drop = DropoutNd(dropout) if dropout > 0.0 else nn.Identity()
 
         self.core_blocks = []
         self.inner_normalizations = []
@@ -77,6 +78,12 @@ class DSS(nn.Module):
             if self.bidirectional:
                 dss_reverse_layer = DSSLayer(input_size=input_size, state_size=state_size, activation=activation, dropout=dropout, version=self.version, bidirectional=bidirectional, bias=bias, **kwargs)
                 bidirectional_linear = nn.Linear(2*self.input_size, self.input_size)
+                #with torch.no_grad():
+                #    bidirectional_linear.weight.zero_()
+                #    bidirectional_linear.bias.zero_()
+                #    bidirectional_linear.weight[:, :self.input_size] = torch.eye(
+                #        self.input_size
+                #    )
                 setattr(self, f'reverse_block_{i}', dss_reverse_layer)
                 setattr(self, f'bidirectional_linear_{i}', bidirectional_linear)
                 self.reverse_blocks.append(dss_reverse_layer)
@@ -101,9 +108,12 @@ class DSS(nn.Module):
             # DSS core computation + activation + dropout + linear mixing
             x_for = layer(x)  # (B L H) / (B H L)
             if self.bidirectional:
-                x_rev = self.reverse_blocks[i](x)
+                rev_layer = self.reverse_blocks[i]
+                bidir_linear = self.bidirectional_linears[i]
+                #x_rev = rev_layer(x)
+                x_rev = rev_layer(x.flip(dims=[-1])).flip(dims=[-1])  # reverse the sequence dimension for the input, then reverse it back for the output
                 x = torch.cat([x_for, x_rev], dim=-2)
-                x = self.bidirectional_linears[i](x.transpose(-1,-2)).transpose(-1,-2)
+                x = bidir_linear(x.transpose(-1,-2)).transpose(-1,-2)
             else:
                 x = x_for
             if self.residual: x = self.drop(x) + y
