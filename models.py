@@ -362,10 +362,14 @@ class S4D(DSS):
             if self.prenorm: x = self.inner_normalizations[i](x)
             # DSS core computation + activation + dropout + linear mixing
             x_for = layer(x)  # (B L H) / (B H L)
+            # bidirectional option bloc
             if self.bidirectional:
-                x_rev = self.reverse_blocks[i](x)
+                rev_layer = self.reverse_blocks[i]
+                bidir_linear = self.bidirectional_linears[i]
+                #x_rev = rev_layer(x)
+                x_rev = rev_layer(x.flip(dims=[-1])).flip(dims=[-1])  # reverse the sequence dimension for the input, then reverse it back for the output
                 x = torch.cat([x_for, x_rev], dim=-2)
-                x = self.bidirectional_linears[i](x.transpose(-1,-2)).transpose(-1,-2)
+                x = bidir_linear(x.transpose(-1,-2)).transpose(-1,-2)
             else:
                 x = x_for
             if self.residual: x = self.drop(x) + y

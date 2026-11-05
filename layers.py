@@ -18,8 +18,11 @@ from kernels import (
     ExponentialExpectationKernel,
     HippoSSKernel,
     S4DKernel,
+    BasisKernel,
     GammaExpectationComplexKernel,
-    GammaExpectationComplexKernelNegRe
+    GammaExpectationComplexKernelNegRe,
+    GammaGaussianKernel,
+    GammaCauchyKernel
 )
 
 from utils import init_VinvB, Activation
@@ -29,7 +32,7 @@ from utils import init_VinvB, Activation
 
 class DSSLayer(nn.Module):
 
-    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'gamma_mgf', 'uniform', 'exponential', 'gamma_complex', 'gamma_complex_neg_re']
+    VERSIONS = ['exp', 'softmax', 'mgf', 'gamma', 'gamma_mgf', 'uniform', 'exponential', 'gamma_complex', 'gamma_complex_neg_re', 'gamma_normal', 'gamma_cauchy', 'basis']
 
     def __init__(
         self,
@@ -67,12 +70,18 @@ class DSSLayer(nn.Module):
             self.kernel = UniformExpectationKernel(self.h, channels=channels, **kwargs)
         elif version == 'exponential':
             self.kernel = ExponentialExpectationKernel(self.h, channels=channels, **kwargs)
+        elif version == 'basis':
+            self.kernel = BasisKernel(self.h, channels=channels, **kwargs)
         elif version == 'gamma_mgf':
             self.kernel = GammaMGFKernel(self.h, channels=channels, **kwargs)
         elif version == 'gamma_complex':
             self.kernel = GammaExpectationComplexKernel(self.h, channels=channels, **kwargs)
         elif version == 'gamma_complex_neg_re':
             self.kernel = GammaExpectationComplexKernelNegRe(self.h, channels=channels, **kwargs)
+        elif version == 'gamma_normal':
+            self.kernel = GammaGaussianKernel(self.h, channels=channels, **kwargs)
+        elif version == 'gamma_cauchy':
+            self.kernel = GammaCauchyKernel(self.h, channels=channels, **kwargs)
         #self.bias = bias
 
         # should have been instantiated already
@@ -95,7 +104,7 @@ class DSSLayer(nn.Module):
 
         # Compute SS Kernel
         Lk = L if not self.max_kernel_length else min(self.max_kernel_length, L)
-        k = self.kernel(L=Lk)  # (C H Lk)
+        k = self.kernel(L=Lk)  # (H Lk)
 
         #if self.bidirectional:
         #    k0, k1 = rearrange(k, '(s c) h l -> s c h l', s=2)

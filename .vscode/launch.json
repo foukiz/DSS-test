@@ -102,6 +102,39 @@
             ]
         },
         {
+            "name": "Debug Image gamma normal",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_gamma_normal.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Image gamma cauchy",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_gamma_cauchy.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
+            "name": "Debug Image Basis",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/launch.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config", "configs/seq_cifar10/seq_cifar10_basis.yaml",
+                "--use_tqdm"
+            ]
+        },
+        {
             "name": "Debug Image gamma complex Neg Re",
             "type": "debugpy",
             "request": "launch",

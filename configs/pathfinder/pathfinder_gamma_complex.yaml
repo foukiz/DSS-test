@@ -6,14 +6,14 @@ DATASET:
   VAL_SIZE: 20000
 MODEL:
   ACTIVATION: $torch.nn.GELU
-  ALPHA_MEAN: [0.]          #### test parameter ####
+  ALPHA_MEAN: [0.]
   ALPHA_STD: [0.1]
   BETA_MEAN: [1.]
   BETA_STD: [0.1]
   THETA_MEAN: [0.]
   THETA_STD: [0.1]
   BIAS: True
-  BIDIRECTIONAL: False
+  BIDIRECTIONAL: False             #### test parameter ####
   DROPOUT: 0.1
   ENCODING: linear
   INPUT_SIZE: 256

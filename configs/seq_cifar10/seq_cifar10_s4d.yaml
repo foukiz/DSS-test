@@ -6,7 +6,7 @@ DATASET:
 MODEL:
   ACTIVATION: $torch.nn.GELU 
   BIAS: True
-  BIDIRECTIONAL: True
+  BIDIRECTIONAL: False                            #### test parameter ####
   DISC: bilinear
   DROPOUT: 0.1
   ENCODING: linear

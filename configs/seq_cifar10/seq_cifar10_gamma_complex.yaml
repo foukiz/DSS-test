@@ -12,7 +12,7 @@ MODEL:
   THETA_MEAN: [0.]
   THETA_STD: [1.]
   BIAS: True
-  BIDIRECTIONAL: True              #### test parameter ####
+  BIDIRECTIONAL: False              #### test parameter ####
   DROPOUT: [0.2]
   ENCODING: linear
   INPUT_SIZE: 512

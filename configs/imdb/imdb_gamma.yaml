@@ -8,7 +8,7 @@ DATASET:
 MODEL:
   ALPHA_MEAN: [1.] #[1.,2.,4.,8.]
   ALPHA_STD: [0.5]
-  THETA_MEAN: [1.,2.,3.,5.] #[4.]
+  THETA_MEAN: [1.,2.,4.,3.,5.] #[4.]
   THETA_STD: 0.5
   ACTIVATION: $torch.nn.GELU
   BIAS: True
